@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.env
+.env.*
+
+# Node / Frontend
+node_modules/
+dist/
+.next/
+.cache/
+*.tsbuildinfo
+
+# Secrets & credentials
+credentials.json
+service_account.json
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+.claude/worktrees/
+*.session
