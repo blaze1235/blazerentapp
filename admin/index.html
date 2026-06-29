@@ -209,6 +209,24 @@ input[type=number]:focus { border-color: var(--blue); }
 ::-webkit-scrollbar-track { background: var(--bg2); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+/* DATE BAR */
+.date-bar { display:flex; gap:8px; align-items:center; padding:10px 24px; background:var(--bg2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.date-preset { padding:4px 10px; border:1px solid var(--border); border-radius:6px; background:none; color:var(--muted); cursor:pointer; font-size:12px; }
+.date-preset.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.date-custom-inputs { display:none; align-items:center; gap:6px; }
+.date-custom-inputs input[type=date] { background:var(--bg4); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:12px; outline:none; }
+.date-custom-inputs input[type=date]:focus { border-color:var(--blue); }
+
+/* EXPORT BTN */
+.export-btn { font-size:11px; padding:3px 8px; background:none; border:1px solid var(--border); border-radius:4px; color:var(--muted); cursor:pointer; }
+.export-btn:hover { color:var(--text); }
+
+/* KPI DELTA */
+.kpi-delta { font-size:11px; margin-top:2px; display:none; }
+.delta-up   { color:var(--green); }
+.delta-down { color:var(--red); }
+.delta-flat { color:var(--muted); }
+
 /* UTIL */
 .text-green { color: var(--green); }
 .text-red { color: var(--red); }
@@ -239,6 +257,8 @@ input[type=number]:focus { border-color: var(--blue); }
   <a href="#retention" class="nav-item" onclick="setActive(this)"><span class="nav-icon">🔄</span>Retention</a>
   <a href="#promo" class="nav-item" onclick="setActive(this)"><span class="nav-icon">🎟️</span>Promo & ROI</a>
   <a href="#performers" class="nav-item" onclick="setActive(this)"><span class="nav-icon">🏆</span>Top Performers</a>
+  <a href="#complaints" class="nav-item" onclick="setActive(this)"><span class="nav-icon">⚠️</span>Complaints</a>
+  <a href="#finance" class="nav-item" onclick="setActive(this)"><span class="nav-icon">💰</span>Finance P&amp;L</a>
   <div class="nav-label">Planning</div>
   <a href="#projections" class="nav-item" onclick="setActive(this)"><span class="nav-icon">📅</span>Projections</a>
   <a href="#insights" class="nav-item" onclick="setActive(this)"><span class="nav-icon">💡</span>Key Insights</a>
@@ -256,6 +276,20 @@ input[type=number]:focus { border-color: var(--blue); }
       <span class="badge badge-green" id="badge-growth">15× revenue growth</span>
       <span class="badge badge-blue" id="badge-orders">584 orders total</span>
       <button id="refreshBtn" onclick="loadDashboard(true)" style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--muted);font-size:12px;cursor:pointer;">↻ Refresh</button>
+    </div>
+  </div>
+  <!-- DATE BAR -->
+  <div class="date-bar" id="dateBar">
+    <button class="date-preset" id="preset-today" onclick="selectPreset('today')">Today</button>
+    <button class="date-preset" id="preset-week" onclick="selectPreset('week')">This week</button>
+    <button class="date-preset" id="preset-month" onclick="selectPreset('month')">This month</button>
+    <button class="date-preset" id="preset-lastmonth" onclick="selectPreset('lastmonth')">Last month</button>
+    <button class="date-preset" id="preset-all" onclick="selectPreset('all')" style="background:var(--blue);color:#fff;border-color:var(--blue)">All time</button>
+    <button class="date-preset" id="preset-custom" onclick="selectPreset('custom')">Custom</button>
+    <div class="date-custom-inputs" id="dateCustomInputs">
+      <input type="date" id="dateFrom" onchange="applyCustomDates()">
+      <span style="color:var(--muted);font-size:12px">to</span>
+      <input type="date" id="dateTo" onchange="applyCustomDates()">
     </div>
   </div>
   <div id="loadingBar" style="height:2px;background:var(--blue);width:0%;transition:width 0.4s,opacity 0.4s;position:sticky;top:49px;z-index:99;margin-top:-2px;"></div>
@@ -276,18 +310,21 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="kpi-value" id="kpi-totalOrders">—</div>
         <div class="kpi-sub" id="kpi-pendingOrders">loading…</div>
         <div class="kpi-trend trend-up" id="kpi-growthTrend">—</div>
+        <div class="kpi-delta" id="delta-totalOrders"></div>
       </div>
       <div class="kpi-card kpi-green">
         <div class="kpi-label">Revenue Received</div>
         <div class="kpi-value" id="kpi-revenue">—</div>
         <div class="kpi-sub">UZS · all time</div>
         <div class="kpi-trend trend-up">Live from Google Sheets</div>
+        <div class="kpi-delta" id="delta-totalRevenue"></div>
       </div>
       <div class="kpi-card kpi-purple">
         <div class="kpi-label">Total Customers</div>
         <div class="kpi-value" id="kpi-customers">—</div>
         <div class="kpi-sub" id="kpi-activeCustomers">loading…</div>
         <div class="kpi-trend trend-up" id="kpi-activation">—</div>
+        <div class="kpi-delta" id="delta-totalCustomers"></div>
       </div>
       <div class="kpi-card kpi-teal">
         <div class="kpi-label">Hours Played</div>
@@ -300,12 +337,14 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="kpi-value" id="kpi-avgOrder">—</div>
         <div class="kpi-sub">UZS blended (promo + paid)</div>
         <div class="kpi-trend trend-neutral" id="kpi-paidAvg">—</div>
+        <div class="kpi-delta" id="delta-avgOrderValue"></div>
       </div>
       <div class="kpi-card kpi-red">
         <div class="kpi-label">Promo Rate</div>
         <div class="kpi-value" id="kpi-promoRate">—</div>
         <div class="kpi-sub">of orders used promo</div>
         <div class="kpi-trend trend-down">⚠ Reducing — target &lt;40%</div>
+        <div class="kpi-delta" id="delta-promoRate"></div>
       </div>
       <div class="kpi-card kpi-blue">
         <div class="kpi-label">Activation Rate</div>
@@ -318,6 +357,13 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="kpi-value" id="kpi-discounts">—</div>
         <div class="kpi-sub">UZS · price − paid_amount (actual cost)</div>
         <div class="kpi-trend trend-down">Reducing as promos cut</div>
+        <div class="kpi-delta" id="delta-totalForgoneRevenue"></div>
+      </div>
+      <div class="kpi-card kpi-teal">
+        <div class="kpi-label">Avg Time to Pay</div>
+        <div class="kpi-value" id="kpi-paymentHours">—</div>
+        <div class="kpi-sub">hours from order to payment</div>
+        <div class="kpi-trend trend-neutral">Lower = smoother checkout</div>
       </div>
       <div class="kpi-card kpi-green">
         <div class="kpi-label">Cash In</div>
@@ -467,6 +513,17 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="funnel-bar-bg"><div class="funnel-bar" style="width:33%;background:#f85149">Unconverted — warm list ready</div></div>
         <div class="funnel-count text-red">—</div>
         <div class="funnel-pct text-muted">—</div>
+      </div>
+    </div>
+
+    <div class="chart-card-full mt16">
+      <div class="chart-title">Customer Lifetime Value</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 0">
+        <div class="stat-chip stat-chip-blue">Avg LTV <strong id="ltv-avg">—</strong> UZS</div>
+        <div class="stat-chip stat-chip-muted">Median LTV <strong id="ltv-median">—</strong> UZS</div>
+        <div class="stat-chip stat-chip-muted">🥉 Bronze avg <strong id="ltv-bronze">—</strong> UZS</div>
+        <div class="stat-chip stat-chip-muted">🥈 Silver avg <strong id="ltv-silver">—</strong> UZS</div>
+        <div class="stat-chip stat-chip-muted">🥇 Gold avg <strong id="ltv-gold">—</strong> UZS</div>
       </div>
     </div>
   </section>
@@ -642,7 +699,10 @@ input[type=number]:focus { border-color: var(--blue); }
 
     <div class="chart-grid-2">
       <div class="chart-card">
-        <div class="chart-title">Top 10 Customers by Orders</div>
+        <div class="flex-between" style="margin-bottom:4px">
+          <div class="chart-title">Top 10 Customers by Orders</div>
+          <button class="export-btn" onclick="exportTopOrders()">⬇ CSV</button>
+        </div>
         <div class="chart-subtitle">Top 10 = 34% of all orders</div>
         <table class="data-table" style="margin-top:12px">
           <thead><tr><th>#</th><th>Name</th><th>Orders</th><th>Revenue</th><th>Hours</th></tr></thead>
@@ -650,7 +710,10 @@ input[type=number]:focus { border-color: var(--blue); }
         </table>
       </div>
       <div class="chart-card">
-        <div class="chart-title">Top 8 Customers by Revenue</div>
+        <div class="flex-between" style="margin-bottom:4px">
+          <div class="chart-title">Top 8 Customers by Revenue</div>
+          <button class="export-btn" onclick="exportTopRevenue()">⬇ CSV</button>
+        </div>
         <div class="chart-subtitle">Сирож leads — 180K UZS paid</div>
         <table class="data-table" style="margin-top:12px">
           <thead><tr><th>#</th><th>Name</th><th>Revenue</th><th>Orders</th><th>Avg/order</th></tr></thead>
@@ -660,7 +723,10 @@ input[type=number]:focus { border-color: var(--blue); }
     </div>
 
     <div class="chart-card-full mt16">
-      <div class="chart-title">Steam Account Utilization</div>
+      <div class="flex-between" style="margin-bottom:4px">
+        <div class="chart-title">Steam Account Utilization</div>
+        <button class="export-btn" onclick="exportAccounts()">⬇ CSV</button>
+      </div>
       <div class="chart-subtitle">Sessions per account · Total capacity at current volume</div>
       <div class="chart-wrap" style="height:260px">
         <canvas id="accountChart" role="img" aria-label="Account utilization horizontal bars"></canvas>
@@ -673,7 +739,68 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="stat-chip stat-chip-green">✅ Free <strong id="acct-fleet-free">—</strong></div>
         <div class="stat-chip stat-chip-orange">🎮 Busy <strong id="acct-fleet-busy">—</strong></div>
         <div class="stat-chip stat-chip-red">⚠️ Error <strong id="acct-fleet-error">—</strong></div>
+        <div class="stat-chip stat-chip-blue" style="margin-left:auto">Revenue/account/day <strong id="kpi-revPerAcctDay">—</strong> UZS</div>
+        <div class="stat-chip" id="comp-rate-chip">Complaint rate <strong id="kpi-compRate">—</strong>%</div>
       </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SECTION: COMPLAINTS -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section id="complaints">
+    <div class="section-header">
+      <div class="section-title">⚠️ Complaints &amp; Quality</div>
+      <div class="section-desc">Support tickets by reason and account</div>
+    </div>
+    <div class="kpi-row" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="stat-chip stat-chip-blue">Total <strong id="comp-total">—</strong></div>
+      <div class="stat-chip stat-chip-red">Open <strong id="comp-open">—</strong></div>
+      <div class="stat-chip stat-chip-green">Resolved <strong id="comp-resolved">—</strong></div>
+      <div class="stat-chip stat-chip-orange">Rate <strong id="comp-rate">—</strong>%</div>
+      <div class="stat-chip stat-chip-muted">Avg resolution <strong id="comp-avg-hours">—</strong>h</div>
+    </div>
+    <div class="chart-grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Complaints by Reason</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="complaintDonut"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Accounts with Most Complaints</div>
+        <table class="data-table" style="margin-top:12px">
+          <thead><tr><th>#</th><th>Account</th><th>Complaints</th><th>Open</th></tr></thead>
+          <tbody id="complaintAcctTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SECTION: FINANCE P&L -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section id="finance">
+    <div class="section-header">
+      <div class="section-title">💰 Finance P&amp;L</div>
+      <div class="section-desc">Revenue vs expenses by month and category</div>
+    </div>
+    <div class="kpi-row" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="stat-chip stat-chip-green">Revenue <strong id="fin-revenue">—</strong></div>
+      <div class="stat-chip stat-chip-red">Total Expenses <strong id="fin-expenses">—</strong></div>
+      <div class="stat-chip stat-chip-blue">Gross Margin <strong id="fin-margin">—</strong></div>
+    </div>
+    <div class="chart-card-full">
+      <div class="chart-title">Monthly Revenue vs Expenses</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="financeChart"></canvas></div>
+    </div>
+    <div class="chart-card-full mt16">
+      <div class="flex-between" style="margin-bottom:8px">
+        <div class="chart-title">Expense Categories</div>
+        <button class="export-btn" onclick="exportPromos()">⬇ CSV Promos</button>
+      </div>
+      <table class="data-table" style="margin-top:12px">
+        <thead><tr><th>Category</th><th>Total (UZS)</th><th>% of Revenue</th></tr></thead>
+        <tbody id="financeTable"></tbody>
+      </table>
     </div>
   </section>
 
@@ -855,7 +982,7 @@ function monthLabel(key) {
 // ─── CHART INSTANCES (kept for updates) ──────────────────
 let revenueChart, signupChart, hoursChart, freqChart, concChart,
     retentionChart, ltvChart, promoDonut, revenueShareChart,
-    accountChart, projectionChart;
+    accountChart, projectionChart, complaintDonut, financeChart;
 
 
 // ─── LOADING STATE ────────────────────────────────────────
@@ -869,16 +996,22 @@ function showError(msg) {
 }
 
 // ─── MAIN LOAD ────────────────────────────────────────────
-async function loadDashboard(force = false) {
+async function loadDashboard(force = false, dateFrom = null, dateTo = null) {
   setLoading(true);
   document.getElementById('refreshBtn').textContent = '↻ Loading…';
   document.getElementById('errorBanner').style.display = 'none';
   try {
     if (force) await fetch(API_BASE + '/refresh', { method: 'POST' });
-    const d = await fetch(API_BASE + '/data').then(r => {
+    let url = API_BASE + '/data';
+    const params = [];
+    if (dateFrom) params.push('date_from=' + dateFrom);
+    if (dateTo)   params.push('date_to='   + dateTo);
+    if (params.length) url += '?' + params.join('&');
+    const d = await fetch(url).then(r => {
       if (!r.ok) return r.json().then(e => { throw new Error(e.error || r.status); });
       return r.json();
     });
+    window._lastFetchedData = d;
 
     // Update live timestamp
     const ts = new Date(d.fetchedAt);
@@ -901,8 +1034,12 @@ async function loadDashboard(force = false) {
     renderPromoCharts(s);
     renderTables(d.topByOrders, d.topByRevenue);
     renderAccounts(d.accounts, s.totalOrders);
+    renderComplaints(d.complaints);
+    renderFinance(d.monthly, d.finance, s.totalRevenue);
     renderProjections(d.projections);
     renderFunnelLive(s);
+    // Load comparison if a date range is active
+    if (dateFrom && dateTo) loadComparison(dateFrom, dateTo);
     setLoading(false);
   } catch (e) {
     setLoading(false);
@@ -962,6 +1099,20 @@ function renderKPIs(s) {
     setText('acct-fleet-busy',  s.accountsBusy  || 0);
     setText('acct-fleet-error', s.accountsError || 0);
     setText('acct-fleet-total', s.accountsTotal || 0);
+    // Feature 6: new KPI metrics
+    setText('kpi-paymentHours', s.avgPaymentHours ? s.avgPaymentHours.toFixed(1) + 'h' : '—');
+    setText('ltv-avg',    s.avgLTV    ? fmtNum(s.avgLTV)    : '—');
+    setText('ltv-median', s.medianLTV ? fmtNum(s.medianLTV) : '—');
+    const lt = s.avgLTVByTier || {};
+    setText('ltv-bronze', lt.bronze ? fmtNum(lt.bronze) : '—');
+    setText('ltv-silver', lt.silver ? fmtNum(lt.silver) : '—');
+    setText('ltv-gold',   lt.gold   ? fmtNum(lt.gold)   : '—');
+    setText('kpi-revPerAcctDay', s.revenuePerAccountPerDay ? fmtNum(s.revenuePerAccountPerDay) : '—');
+    if (s.complaintRate !== undefined) {
+      setText('kpi-compRate', s.complaintRate);
+      const chip = document.getElementById('comp-rate-chip');
+      if (chip) chip.className = 'stat-chip ' + (s.complaintRate < 2 ? 'stat-chip-green' : s.complaintRate < 5 ? 'stat-chip-orange' : 'stat-chip-red');
+    }
     // Client risk/tier badges in customers section
     setText('cust-risk',    s.clientsRisk    || 0);
     setText('cust-blocked', s.clientsBlocked || 0);
@@ -1278,6 +1429,200 @@ function drawPaceChart(mode) {
 }
 
 
+// ─── COMPLAINTS ───────────────────────────────────────────
+function renderComplaints(comp) {
+  if (!comp) return;
+  setText('comp-total',     comp.total);
+  setText('comp-open',      comp.open);
+  setText('comp-resolved',  comp.resolved);
+  setText('comp-rate',      comp.rate);
+  setText('comp-avg-hours', comp.avgResolutionHours ? Math.round(comp.avgResolutionHours) : '—');
+
+  const reasons = Object.keys(comp.byReason || {});
+  const counts  = reasons.map(r => comp.byReason[r]);
+  const COLORS  = ['#58a6ff','#f85149','#3fb950','#d2a520','#bc8cff','#79c0ff'];
+  const cfg = { type:'doughnut', data:{ labels:reasons, datasets:[{ data:counts, backgroundColor:COLORS.slice(0,reasons.length), borderWidth:0 }]}, options:{ responsive:true,maintainAspectRatio:false, plugins:{ legend:{position:'right',labels:{color:TICK,font:{size:11},boxWidth:10}}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}`}} }}};
+  if (complaintDonut) { complaintDonut.data = cfg.data; complaintDonut.update(); } else complaintDonut = new Chart(document.getElementById('complaintDonut'), cfg);
+
+  document.getElementById('complaintAcctTable').innerHTML = (comp.byAccount || []).map((a, i) => `<tr><td>${i+1}</td><td>${a.name}</td><td>${a.total}</td><td>${a.open}</td></tr>`).join('');
+}
+
+// ─── FINANCE P&L ─────────────────────────────────────────
+function renderFinance(monthly, financeRows, totalRevenue) {
+  if (!financeRows || !financeRows.length) return;
+
+  // Group expenses by month and category
+  const expByMonth = {}, expByCategory = {};
+  let totalExpenses = 0;
+  financeRows.filter(r => r.type === 'expense').forEach(r => {
+    const mo = (r.tx_date || '').slice(0, 7);
+    const cat = r.category || 'Other';
+    const amt = parseFloat(r.amount) || 0;
+    if (!expByMonth[mo]) expByMonth[mo] = {};
+    expByMonth[mo][cat] = (expByMonth[mo][cat] || 0) + amt;
+    expByCategory[cat] = (expByCategory[cat] || 0) + amt;
+    totalExpenses += amt;
+  });
+
+  const grossMargin = totalRevenue - totalExpenses;
+  setText('fin-revenue',  fmtUZS(totalRevenue));
+  setText('fin-expenses', fmtUZS(totalExpenses));
+  const marginEl = document.getElementById('fin-margin');
+  if (marginEl) { marginEl.textContent = fmtUZS(grossMargin); marginEl.className = 'stat-chip ' + (grossMargin >= 0 ? 'stat-chip-green' : 'stat-chip-red'); }
+
+  // Build chart using monthly revenue as the x-axis
+  const labels = monthly.map(m => monthLabel(m.month));
+  const revData = monthly.map(m => m.revenue);
+  const cats = Object.keys(expByCategory);
+  const BAR_COLORS = ['#f85149','#d29922','#a371f7','#58a6ff','#3fb950','#f778ba'];
+  const barDatasets = cats.map((cat, i) => ({
+    type: 'bar', label: cat,
+    data: monthly.map(m => expByMonth[m.month] ? (expByMonth[m.month][cat] || 0) : 0),
+    backgroundColor: BAR_COLORS[i % BAR_COLORS.length],
+    borderRadius: 3, stack: 'exp',
+  }));
+  const lineDataset = { type: 'line', label: 'Revenue', data: revData, borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,0.1)', fill: true, tension: 0.4, pointRadius: 3, yAxisID: 'y2', order: -1 };
+  const cfg = {
+    data: { labels, datasets: [...barDatasets, lineDataset] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { color: TICK, boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        x:  { ticks: { color: TICK }, grid: { color: GRID } },
+        y:  { stacked: true, ticks: { color: TICK, callback: v => fmtNum(v) }, grid: { color: GRID }, title: { display: true, text: 'Expenses (UZS)', color: TICK, font: { size: 11 } } },
+        y2: { position: 'right', ticks: { color: TICK, callback: v => fmtNum(v) }, grid: { display: false }, title: { display: true, text: 'Revenue (UZS)', color: TICK, font: { size: 11 } } },
+      }
+    }
+  };
+  if (financeChart) { financeChart.destroy(); }
+  financeChart = new Chart(document.getElementById('financeChart'), cfg);
+
+  // Expense table
+  document.getElementById('financeTable').innerHTML = Object.entries(expByCategory)
+    .sort(([,a],[,b]) => b - a)
+    .map(([cat, amt]) => `<tr><td>${cat}</td><td>${fmtNum(amt)} UZS</td><td class="text-muted">${totalRevenue > 0 ? Math.round(amt/totalRevenue*100) : 0}%</td></tr>`)
+    .join('');
+}
+
+// ─── DATE RANGE PRESET ────────────────────────────────────
+window._activePreset = 'all';
+function tashkentToday() {
+  const d = new Date(Date.now() + 5 * 3600000);
+  return d.toISOString().slice(0, 10);
+}
+function selectPreset(name) {
+  window._activePreset = name;
+  document.querySelectorAll('.date-preset').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('preset-' + name);
+  if (btn) btn.classList.add('active');
+  const customDiv = document.getElementById('dateCustomInputs');
+
+  const today = tashkentToday();
+  const [y, m, d] = today.split('-').map(Number);
+
+  let dateFrom = null, dateTo = null;
+  if (name === 'today') {
+    dateFrom = dateTo = today;
+    customDiv.style.display = 'none';
+  } else if (name === 'week') {
+    const now = new Date(Date.now() + 5 * 3600000);
+    const dow = now.getUTCDay(); // 0=Sun
+    const monday = new Date(now.getTime() - ((dow === 0 ? 6 : dow - 1) * 86400000));
+    dateFrom = monday.toISOString().slice(0, 10);
+    dateTo = today;
+    customDiv.style.display = 'none';
+  } else if (name === 'month') {
+    dateFrom = `${y}-${String(m).padStart(2,'0')}-01`;
+    dateTo = today;
+    customDiv.style.display = 'none';
+  } else if (name === 'lastmonth') {
+    const lm = m === 1 ? 12 : m - 1;
+    const ly = m === 1 ? y - 1 : y;
+    const lastDay = new Date(Date.UTC(y, m - 1, 0)).getUTCDate();
+    dateFrom = `${ly}-${String(lm).padStart(2,'0')}-01`;
+    dateTo   = `${ly}-${String(lm).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    customDiv.style.display = 'none';
+  } else if (name === 'custom') {
+    customDiv.style.display = 'flex';
+    return; // wait for inputs
+  } else {
+    // all
+    customDiv.style.display = 'none';
+  }
+
+  // Reset delta elements
+  document.querySelectorAll('.kpi-delta').forEach(el => { el.style.display = 'none'; el.textContent = ''; });
+
+  loadDashboard(false, dateFrom, dateTo);
+  if (dateFrom && dateTo && name !== 'custom') loadComparison(dateFrom, dateTo);
+}
+
+function applyCustomDates() {
+  const df = document.getElementById('dateFrom').value;
+  const dt = document.getElementById('dateTo').value;
+  if (!df || !dt) return;
+  document.querySelectorAll('.kpi-delta').forEach(el => { el.style.display = 'none'; });
+  loadDashboard(false, df, dt);
+  loadComparison(df, dt);
+}
+
+// ─── PERIOD COMPARISON ────────────────────────────────────
+async function loadComparison(dateFrom, dateTo) {
+  try {
+    const from = new Date(dateFrom + 'T00:00:00');
+    const to   = new Date(dateTo   + 'T00:00:00');
+    const duration = to - from; // ms
+    const prevTo   = new Date(from.getTime() - 86400000);
+    const prevFrom = new Date(prevTo.getTime() - duration);
+    const pf = prevFrom.toISOString().slice(0, 10);
+    const pt = prevTo.toISOString().slice(0, 10);
+
+    const prev = await fetch(`${API_BASE}/data?date_from=${pf}&date_to=${pt}`).then(r => r.json());
+    const curr = window._lastFetchedData;
+    if (!prev || !curr) return;
+    const ps = prev.summary, cs = curr.summary;
+
+    const delta = (c, p) => Math.round((c - p) / Math.max(1, Math.abs(p)) * 100);
+    const renderDelta = (id, pct) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (pct > 0)      { el.className = 'kpi-delta delta-up';   el.textContent = '▲ +' + pct + '% vs prev period'; }
+      else if (pct < 0) { el.className = 'kpi-delta delta-down'; el.textContent = '▼ ' + pct + '% vs prev period'; }
+      else              { el.className = 'kpi-delta delta-flat';  el.textContent = '— flat vs prev period'; }
+      el.style.display = 'block';
+    };
+    renderDelta('delta-totalOrders',        delta(cs.totalOrders,       ps.totalOrders));
+    renderDelta('delta-totalRevenue',       delta(cs.totalRevenue,      ps.totalRevenue));
+    renderDelta('delta-totalCustomers',     delta(cs.totalCustomers,    ps.totalCustomers));
+    renderDelta('delta-avgOrderValue',      delta(cs.avgOrderValue,     ps.avgOrderValue));
+    renderDelta('delta-promoRate',          delta(cs.promoRate,         ps.promoRate));
+    renderDelta('delta-totalForgoneRevenue',delta(cs.totalForgoneRevenue, ps.totalForgoneRevenue));
+  } catch (e) { /* silently ignore comparison errors */ }
+}
+
+// ─── CSV EXPORT ───────────────────────────────────────────
+function downloadCSV(filename, headers, rows) {
+  const escape = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+function exportTopOrders() {
+  const d = window._lastFetchedData; if (!d) return;
+  downloadCSV('top-by-orders.csv', ['Rank','Name','Orders','Revenue (UZS)','Hours'], d.topByOrders.map((r,i) => [i+1, r.name, r.orders, Math.round(r.revenue), Math.round(r.hours)]));
+}
+function exportTopRevenue() {
+  const d = window._lastFetchedData; if (!d) return;
+  downloadCSV('top-by-revenue.csv', ['Rank','Name','Revenue (UZS)','Orders','Avg/Order'], d.topByRevenue.map((r,i) => [i+1, r.name, Math.round(r.revenue), r.orders, r.orders > 0 ? Math.round(r.revenue/r.orders) : 0]));
+}
+function exportAccounts() {
+  const d = window._lastFetchedData; if (!d) return;
+  downloadCSV('account-utilization.csv', ['Account','Sessions','Revenue (UZS)'], d.accounts.map(a => [a.name, a.sessions, Math.round(a.revenue)]));
+}
+function exportPromos() {
+  const d = window._lastFetchedData; if (!d) return;
+  downloadCSV('promo-stats.csv', ['Code','Type','Value','Used','Max Uses','Usage %','Paused'], d.promoStats.map(p => [p.code, p.type, p.value, p.used, p.maxUses, p.usagePct+'%', p.paused ? 'Yes' : 'No']));
+}
+
 // ─── SIDEBAR SCROLL ───────────────────────────────────────
 function setActive(el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -1299,7 +1644,9 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 setInterval(() => loadDashboard(false), 60000);
 
 // ─── BOOT ─────────────────────────────────────────────────
-initStaticCharts();
+// initStaticCharts is called from loadDashboard; removed static init
+// Pre-activate "All time" preset button style
+document.getElementById('preset-all').classList.add('active');
 loadDashboard();
 </script>
 </body>

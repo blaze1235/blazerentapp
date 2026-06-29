@@ -17,8 +17,9 @@ const pool = new Pool({
 app.use(express.static(__dirname));
 
 // ─── Data fetch ───────────────────────────────────────────────────────────────
-async function fetchAll() {
-  const cached = cache.get('data');
+async function fetchAll(date_from, date_to) {
+  const cacheKey = `${date_from || ''}:${date_to || ''}`;
+  const cached = cache.get(cacheKey);
   if (cached) return cached;
 
   // All queries in parallel — timestamps formatted to Tashkent local time in SQL
@@ -31,11 +32,13 @@ async function fetchAll() {
     { rows: financeRows },
     { rows: clubRows },
     { rows: txRows },
+    { rows: complaintsRaw },
   ] = await Promise.all([
     pool.query(`
       SELECT id, user_id, account_id, status, hours,
         price::float, discount::float, paid_amount::float, promo_code,
-        TO_CHAR(created_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
+        TO_CHAR(created_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at,
+        TO_CHAR(paid_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS paid_at
       FROM orders
       ORDER BY created_at
     `),
@@ -81,6 +84,12 @@ async function fetchAll() {
       FROM transactions
       ORDER BY created_at
     `),
+    pool.query(`
+      SELECT c.id, c.reason, c.status, c.account_id, c.user_id,
+        TO_CHAR(c.created_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at,
+        TO_CHAR(c.resolved_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS resolved_at
+      FROM complaints c ORDER BY c.created_at DESC
+    `),
   ]);
 
   const num = v => parseFloat(v) || 0;
@@ -90,8 +99,20 @@ async function fetchAll() {
   accountsRaw.forEach(a => { acctNameMap[a.id] = a.steam_login; });
 
   // ── Order status split ─────────────────────────────────────────────────────
-  const finished = orders.filter(o => o.status === 'completed');
-  const pending  = orders.filter(o => o.status === 'pending_payment');
+  let finishedAll = orders.filter(o => o.status === 'completed');
+  const pending   = orders.filter(o => o.status === 'pending_payment');
+
+  // ── Apply date range filter to finished orders ────────────────────────────
+  let finished = finishedAll;
+  if (date_from || date_to) {
+    finished = finishedAll.filter(o => {
+      if (!o.created_at) return false;
+      const d = o.created_at.slice(0, 10);
+      if (date_from && d < date_from) return false;
+      if (date_to   && d > date_to)   return false;
+      return true;
+    });
+  }
 
   // ── Revenue ────────────────────────────────────────────────────────────────
   const totalRevenue        = finished.reduce((s, o) => s + num(o.paid_amount), 0);
@@ -164,9 +185,13 @@ async function fetchAll() {
     else             monthly[key].paid++;
   });
 
+  // Filter signups by date range for the monthly signupsByMonth computation
   const signupsByMonth = {};
   users.forEach(u => {
     if (!u.created_at || u.created_at.length < 7) return;
+    const d = u.created_at.slice(0, 10);
+    if (date_from && d < date_from) return;
+    if (date_to   && d > date_to)   return;
     const key = u.created_at.slice(0, 7);
     signupsByMonth[key] = (signupsByMonth[key] || 0) + 1;
   });
@@ -342,6 +367,72 @@ async function fetchAll() {
     promoRate:                parseFloat((finished.length ? promoOrders.length / finished.length : 0).toFixed(2)),
   };
 
+  // ── Feature 5: New KPI metrics ────────────────────────────────────────────
+
+  // avgPaymentHours
+  const paidOrders2 = finished.filter(o => o.paid_at && o.created_at);
+  const avgPaymentHours = paidOrders2.length
+    ? paidOrders2.reduce((s, o) => {
+        const diff = (new Date(o.paid_at) - new Date(o.created_at)) / 3600000;
+        return s + Math.max(0, diff);
+      }, 0) / paidOrders2.length
+    : 0;
+
+  // revenuePerAccountPerDay
+  const distinctOrderDays = new Set(finished.map(o => o.created_at ? o.created_at.slice(0, 10) : null).filter(Boolean)).size;
+  const revenuePerAccountPerDay = accountsActive > 0 && distinctOrderDays > 0
+    ? Math.round(totalRevenue / accountsActive / distinctOrderDays)
+    : 0;
+
+  // LTV metrics
+  const ltvValues = Object.values(custRevenue).filter(v => v > 0);
+  ltvValues.sort((a, b) => a - b);
+  const avgLTV = ltvValues.length ? Math.round(ltvValues.reduce((s, v) => s + v, 0) / ltvValues.length) : 0;
+  const medianLTV = ltvValues.length ? Math.round(ltvValues[Math.floor(ltvValues.length / 2)]) : 0;
+  const tierRevenue = { bronze: [], silver: [], gold: [] };
+  users.forEach(u => {
+    const rev = custRevenue[u.id];
+    if (rev > 0 && tierRevenue[u.tier]) tierRevenue[u.tier].push(rev);
+  });
+  const avgLTVByTier = {};
+  Object.entries(tierRevenue).forEach(([tier, vals]) => {
+    avgLTVByTier[tier] = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0;
+  });
+
+  // ── Complaints metrics ────────────────────────────────────────────────────
+  const complaintsTotal    = complaintsRaw.length;
+  const complaintsOpen     = complaintsRaw.filter(c => c.status === 'open').length;
+  const complaintsResolved = complaintsRaw.filter(c => c.status === 'resolved').length;
+  const complaintRate      = Math.round(complaintsTotal / Math.max(1, finished.length) * 100 * 10) / 10;
+
+  // avgResolutionHours
+  const resolvedWithTime = complaintsRaw.filter(c => c.status === 'resolved' && c.resolved_at && c.created_at);
+  const avgResolutionHours = resolvedWithTime.length
+    ? resolvedWithTime.reduce((s, c) => {
+        const diff = (new Date(c.resolved_at) - new Date(c.created_at)) / 3600000;
+        return s + Math.max(0, diff);
+      }, 0) / resolvedWithTime.length
+    : 0;
+
+  // complaintsByReason
+  const complaintsByReason = {};
+  complaintsRaw.forEach(c => {
+    const r = c.reason || 'Unknown';
+    complaintsByReason[r] = (complaintsByReason[r] || 0) + 1;
+  });
+
+  // complaintsByAccount: top 5 by complaint count
+  const acctComplaintsTotal = {}, acctComplaintsOpen = {};
+  complaintsRaw.forEach(c => {
+    const a = c.account_id; if (!a) return;
+    acctComplaintsTotal[a] = (acctComplaintsTotal[a] || 0) + 1;
+    if (c.status === 'open') acctComplaintsOpen[a] = (acctComplaintsOpen[a] || 0) + 1;
+  });
+  const complaintsByAccount = Object.entries(acctComplaintsTotal)
+    .map(([id, total]) => ({ name: acctNameMap[id] || id, total, open: acctComplaintsOpen[id] || 0 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
   const result = {
     fetchedAt: new Date().toISOString(),
     summary: {
@@ -369,6 +460,15 @@ async function fetchAll() {
       accountsTotal: accountsRaw.length, accountsFree, accountsBusy, accountsError, accountsActive,
       clientsVip: vipCount, clientsBlocked: blockedCount, clientsRisk: riskCount,
       tierCounts,
+      // ── Feature 5: new KPI metrics ───────────────────────────────────────
+      avgPaymentHours: Math.round(avgPaymentHours * 10) / 10,
+      revenuePerAccountPerDay,
+      avgLTV, medianLTV, avgLTVByTier,
+      // ── Feature 3: complaints summary ────────────────────────────────────
+      complaintsTotal, complaintRate,
+      // ── Feature 1: date range ─────────────────────────────────────────────
+      dateFrom: date_from || null,
+      dateTo:   date_to   || null,
     },
     monthly:     sortedMonths.map(([month, d]) => ({ month, ...d })),
     signups:     Object.entries(signupsByMonth).sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, count })),
@@ -392,15 +492,28 @@ async function fetchAll() {
     // ── New data not available from Sheets ───────────────────────────────────
     finance: financeRows,
     clubs: clubRows,
+    // ── Feature 3: complaints ────────────────────────────────────────────────
+    complaints: {
+      total: complaintsTotal,
+      open: complaintsOpen,
+      resolved: complaintsResolved,
+      rate: complaintRate,
+      avgResolutionHours: Math.round(avgResolutionHours * 10) / 10,
+      byReason: complaintsByReason,
+      byAccount: complaintsByAccount,
+    },
   };
 
-  cache.set('data', result);
+  cache.set(cacheKey, result);
   return result;
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.get('/api/data', async (req, res) => {
-  try { res.json(await fetchAll()); }
+  try {
+    const { date_from, date_to } = req.query;
+    res.json(await fetchAll(date_from || null, date_to || null));
+  }
   catch (e) { console.error('[/api/data]', e.message); res.status(500).json({ error: e.message }); }
 });
 
