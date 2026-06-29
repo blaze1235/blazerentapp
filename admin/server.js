@@ -30,6 +30,7 @@ async function fetchAll() {
     { rows: accountsRaw },
     { rows: financeRows },
     { rows: clubRows },
+    { rows: txRows },
   ] = await Promise.all([
     pool.query(`
       SELECT id, user_id, account_id, status, hours,
@@ -39,7 +40,7 @@ async function fetchAll() {
       ORDER BY created_at
     `),
     pool.query(`
-      SELECT id, name, phone, balance::float, tier, is_blocked, is_vip, tg_username,
+      SELECT id, name, phone, balance::float, tier, is_blocked, is_vip, is_risk, tg_username,
         TO_CHAR(created_at     AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at,
         TO_CHAR(last_active_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS last_active_at
       FROM users
@@ -74,6 +75,12 @@ async function fetchAll() {
       WHERE c.deleted_at IS NULL
       GROUP BY c.id ORDER BY c.created_at
     `),
+    pool.query(`
+      SELECT type, status, amount::float,
+        TO_CHAR(created_at AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
+      FROM transactions
+      ORDER BY created_at
+    `),
   ]);
 
   const num = v => parseFloat(v) || 0;
@@ -99,10 +106,29 @@ async function fetchAll() {
   const revenueFromPaid  = paidOrders.reduce((s, o) => s + num(o.paid_amount), 0);
   const revenueFromPromo = promoOrders.reduce((s, o) => s + num(o.paid_amount), 0);
 
+  // ── Cash In / Liabilities (from transactions table) ──────────────────────
+  const cashIn      = txRows.filter(t => t.type === 'topup' && t.status === 'done').reduce((s, t) => s + num(t.amount), 0);
+  const liabilities = users.reduce((s, u) => s + num(u.balance), 0);
+  const avgCheck    = paidOrders.length > 0 ? Math.round(revenueFromPaid / paidOrders.length) : 0;
+
+  // ── Account fleet status ──────────────────────────────────────────────────
+  const accountsFree   = accountsRaw.filter(a => a.status === 'available').length;
+  const accountsBusy   = accountsRaw.filter(a => a.status === 'in_use').length;
+  const accountsError  = accountsRaw.filter(a => ['cooldown', 'blocked'].includes(a.status)).length;
+  const accountsActive = accountsRaw.filter(a => a.status !== 'inactive').length;
+
   // ── Users ──────────────────────────────────────────────────────────────────
   const validUserIdSet = new Set(users.map(u => u.id));
   const custNameMap    = {};
   users.forEach(u => { custNameMap[u.id] = u.name || u.phone; });
+
+  // ── Client segmentation ───────────────────────────────────────────────────
+  const clients     = users.filter(u => !u.role || u.role === 'client');
+  const vipCount    = clients.filter(u => u.is_vip).length;
+  const blockedCount = clients.filter(u => u.is_blocked).length;
+  const riskCount   = clients.filter(u => u.is_risk).length;
+  const tierCounts  = { bronze: 0, silver: 0, gold: 0 };
+  clients.forEach(u => { if (tierCounts[u.tier] !== undefined) tierCounts[u.tier]++; });
 
   const activeIds  = new Set(finished.map(o => o.user_id).filter(id => id && validUserIdSet.has(id)));
   const neverOrdered = users.filter(u => !activeIds.has(u.id)).length;
@@ -338,6 +364,11 @@ async function fetchAll() {
       revenueGrowthPeak,
       lastFullMonth, forecastBase, peakHour, peakDow,
       ordersPerClubPerMonth, signupsPerClubPerMonth,
+      // ── New PostgreSQL-only metrics ──────────────────────────────────────
+      cashIn, liabilities, avgCheck,
+      accountsTotal: accountsRaw.length, accountsFree, accountsBusy, accountsError, accountsActive,
+      clientsVip: vipCount, clientsBlocked: blockedCount, clientsRisk: riskCount,
+      tierCounts,
     },
     monthly:     sortedMonths.map(([month, d]) => ({ month, ...d })),
     signups:     Object.entries(signupsByMonth).sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, count })),

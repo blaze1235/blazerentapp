@@ -218,6 +218,13 @@ input[type=number]:focus { border-color: var(--blue); }
 .mt8 { margin-top: 8px; }
 .mt16 { margin-top: 16px; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
+.stat-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:12px; border:1px solid var(--border); background:var(--bg3); }
+.stat-chip strong { font-size:14px; font-weight:700; }
+.stat-chip-blue  { border-color:rgba(88,166,255,0.4);  color:var(--blue); }
+.stat-chip-green { border-color:rgba(63,185,80,0.4);   color:var(--green); }
+.stat-chip-orange{ border-color:rgba(210,153,34,0.4);  color:var(--orange); }
+.stat-chip-red   { border-color:rgba(248,81,73,0.4);   color:var(--red); }
+.stat-chip-muted { border-color:var(--border);          color:var(--muted); }
 </style>
 </head>
 <body>
@@ -312,6 +319,24 @@ input[type=number]:focus { border-color: var(--blue); }
         <div class="kpi-sub">UZS · price − paid_amount (actual cost)</div>
         <div class="kpi-trend trend-down">Reducing as promos cut</div>
       </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-label">Cash In</div>
+        <div class="kpi-value" id="kpi-cashIn">—</div>
+        <div class="kpi-sub">UZS · actual top-ups received</div>
+        <div class="kpi-trend" id="kpi-cashInVsRev">vs revenue</div>
+      </div>
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-label">Liabilities</div>
+        <div class="kpi-value" id="kpi-liabilities">—</div>
+        <div class="kpi-sub">UZS · balance we owe clients</div>
+        <div class="kpi-trend trend-neutral">Client wallet balances</div>
+      </div>
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-label">Avg Check (paid)</div>
+        <div class="kpi-value" id="kpi-avgCheck">—</div>
+        <div class="kpi-sub">UZS · paid orders only</div>
+        <div class="kpi-trend trend-neutral" id="kpi-avgCheckSub">per paid session</div>
+      </div>
     </div>
   </section>
 
@@ -377,6 +402,15 @@ input[type=number]:focus { border-color: var(--blue); }
     <div class="section-header">
       <div class="section-title">👥 Customer Analytics</div>
       <div class="section-desc">328 registered · 220 active · 108 never ordered</div>
+    </div>
+
+    <div class="kpi-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <div class="stat-chip stat-chip-blue">🏆 VIP <strong id="cust-vip">—</strong></div>
+      <div class="stat-chip stat-chip-orange">⚠️ Risk <strong id="cust-risk">—</strong></div>
+      <div class="stat-chip stat-chip-red">🚫 Blocked <strong id="cust-blocked">—</strong></div>
+      <div class="stat-chip stat-chip-muted">🥉 Bronze <strong id="tier-bronze">—</strong></div>
+      <div class="stat-chip stat-chip-muted">🥈 Silver <strong id="tier-silver">—</strong></div>
+      <div class="stat-chip stat-chip-muted">🥇 Gold <strong id="tier-gold">—</strong></div>
     </div>
 
     <div class="chart-grid-2">
@@ -631,8 +665,14 @@ input[type=number]:focus { border-color: var(--blue); }
       <div class="chart-wrap" style="height:260px">
         <canvas id="accountChart" role="img" aria-label="Account utilization horizontal bars"></canvas>
       </div>
-      <div class="sim-alert sim-alert-warn mt8">
-        ⚠️ blazerent1 handles 17% of all sessions (100/584). At 6-club scale you'll need ~30 accounts total. Current: 10 accounts.
+      <div class="sim-alert sim-alert-warn mt8" id="acct-concentration-alert">
+        ⚠️ Loading account concentration data…
+      </div>
+      <div class="kpi-row" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+        <div class="stat-chip stat-chip-blue">📊 Total <strong id="acct-fleet-total">—</strong></div>
+        <div class="stat-chip stat-chip-green">✅ Free <strong id="acct-fleet-free">—</strong></div>
+        <div class="stat-chip stat-chip-orange">🎮 Busy <strong id="acct-fleet-busy">—</strong></div>
+        <div class="stat-chip stat-chip-red">⚠️ Error <strong id="acct-fleet-error">—</strong></div>
       </div>
     </div>
   </section>
@@ -906,6 +946,31 @@ function renderKPIs(s) {
   setText('mini-promoAvg',   '~' + Math.round(s.promoOrderAvg).toLocaleString());
   setText('mini-paidCount',   s.paidOrders);
   setText('mini-promoCount2', s.promoOrders);
+  // ── New PostgreSQL metrics ──────────────────────────────────────────────
+  if (s.cashIn !== undefined) {
+    setText('kpi-cashIn',      fmtUZS(s.cashIn));
+    setText('kpi-liabilities', fmtUZS(s.liabilities));
+    setText('kpi-avgCheck',    Math.round(s.avgCheck || 0).toLocaleString() + ' UZS');
+    const cashVsRev = s.totalRevenue > 0 ? Math.round(s.cashIn / s.totalRevenue * 100) : 0;
+    const cashEl = document.getElementById('kpi-cashInVsRev');
+    if (cashEl) {
+      cashEl.textContent = cashVsRev + '% of total revenue';
+      cashEl.className   = 'kpi-trend ' + (cashVsRev >= 80 ? 'trend-up' : cashVsRev >= 50 ? 'trend-neutral' : 'trend-down');
+    }
+    // Account fleet badge in accounts section
+    setText('acct-fleet-free',  s.accountsFree  || 0);
+    setText('acct-fleet-busy',  s.accountsBusy  || 0);
+    setText('acct-fleet-error', s.accountsError || 0);
+    setText('acct-fleet-total', s.accountsTotal || 0);
+    // Client risk/tier badges in customers section
+    setText('cust-risk',    s.clientsRisk    || 0);
+    setText('cust-blocked', s.clientsBlocked || 0);
+    setText('cust-vip',     s.clientsVip     || 0);
+    const tc = s.tierCounts || {};
+    setText('tier-bronze', tc.bronze || 0);
+    setText('tier-silver', tc.silver || 0);
+    setText('tier-gold',   tc.gold   || 0);
+  }
 }
 
 // ─── TOP BAR BADGES — LOGIC 2 FIX: fully dynamic ─────────
@@ -1118,7 +1183,7 @@ function renderAccounts(accounts, totalOrders) {
   if (accounts.length) {
     const top = accounts[0];
     const topPct = Math.round(top.sessions/totalOrders*100);
-    document.querySelector('.sim-alert-warn').textContent =
+    document.getElementById('acct-concentration-alert').textContent =
       '⚠️ ' + top.name + ' handles ' + topPct + '% of all sessions (' + top.sessions + '/' + totalOrders + '). At 6-club scale you\'ll need ~30 accounts total. Current: ' + accounts.length + ' accounts.';
   }
 }
