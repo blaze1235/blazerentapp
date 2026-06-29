@@ -76,7 +76,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, Bl
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
   height: var(--nav-h); background: var(--bg2);
   border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
 }
 .nav-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -528,156 +528,7 @@ input[type=number]:focus { border-color: var(--blue); }
     </div>
   </div>
 
-  <!-- ═══ PAGE: SIMULATOR ═══ -->
-  <div class="page" id="page-simulator">
-    <div class="section-head">
-      <div class="section-title">🧮 Forecast Builder</div>
-      <div class="section-desc">Model your business — change inputs, see outputs</div>
-    </div>
 
-    <!-- Interactive Builder -->
-    <div class="sim-card">
-      <div class="sim-title">⚙️ Build your scenario</div>
-      <div class="sim-desc">Pre-filled with your real numbers. <span onclick="resetBuilder()" style="color:var(--blue)">↺ Reset</span></div>
-
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Steam accounts</span><span class="sim-value-display" id="b-accountsVal">25</span></div>
-        <input type="range" id="b-accounts" min="1" max="150" value="25" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Computer clubs</span><span class="sim-value-display" id="b-clubsVal">2</span></div>
-        <input type="range" id="b-clubs" min="1" max="40" value="2" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Price per hour (UZS)</span><span class="sim-value-display" id="b-priceVal">1,096</span></div>
-        <input type="range" id="b-price" min="500" max="15000" step="100" value="1096" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Avg session (hours)</span><span class="sim-value-display" id="b-sessionVal">2.2</span></div>
-        <input type="range" id="b-session" min="0.5" max="8" step="0.1" value="2.2" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Sessions / account / day</span><span class="sim-value-display" id="b-utilVal">2.00</span></div>
-        <input type="range" id="b-util" min="0.05" max="10" step="0.01" value="2" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Orders / club / month</span><span class="sim-value-display" id="b-demandVal">41</span></div>
-        <input type="range" id="b-demand" min="5" max="400" value="41" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Operating days / month</span><span class="sim-value-display" id="b-daysVal">30</span></div>
-        <input type="range" id="b-days" min="20" max="31" value="30" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Cost / account / mo (UZS)</span></div>
-        <input type="number" id="b-costAcct" placeholder="optional" value="0" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Cost / club / mo (UZS)</span></div>
-        <input type="number" id="b-costClub" placeholder="optional" value="0" oninput="runBuilder()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Other fixed / mo · Growth %</span></div>
-        <div style="display:flex;gap:8px">
-          <input type="number" id="b-costFixed" placeholder="fixed" value="0" oninput="runBuilder()">
-          <input type="number" id="b-growth" placeholder="growth %" value="10" oninput="runBuilder()">
-        </div>
-      </div>
-    </div>
-
-    <!-- Builder outputs -->
-    <div class="sim-card">
-      <div class="sim-title">📊 Projected Outcome</div>
-      <div class="big-out-grid">
-        <div class="big-out"><div class="big-out-val text-green" id="b-revenue">—</div><div class="big-out-label">Monthly Revenue</div></div>
-        <div class="big-out"><div class="big-out-val" id="b-profit">—</div><div class="big-out-label">Monthly Profit</div></div>
-      </div>
-      <div id="b-bottleneck" style="margin-bottom:12px"></div>
-      <div class="stat-row"><span class="stat-label">Account capacity</span><span class="stat-val text-blue" id="b-capacity">—</span></div>
-      <div class="stat-row"><span class="stat-label">Club demand</span><span class="stat-val text-orange" id="b-demandOut">—</span></div>
-      <div class="stat-row"><span class="stat-label">Actual orders / mo</span><span class="stat-val text-blue" id="b-orders">—</span></div>
-      <div class="stat-row"><span class="stat-label">Utilization</span><span class="stat-val" id="b-utilization">—</span></div>
-      <div class="stat-row"><span class="stat-label">Hours rented / mo</span><span class="stat-val" id="b-hoursOut">—</span></div>
-      <div class="stat-row"><span class="stat-label">Costs / mo</span><span class="stat-val text-red" id="b-costs">—</span></div>
-      <div class="stat-row"><span class="stat-label">Annual revenue</span><span class="stat-val text-green" id="b-annualRev">—</span></div>
-      <div class="stat-row"><span class="stat-label">Annual profit</span><span class="stat-val" id="b-annualProfit">—</span></div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-title-row">
-        <div class="chart-title">12-Month Projection</div>
-        <div class="chart-subtitle" style="margin:0">Yr1: <strong class="text-green" id="b-year1">—</strong></div>
-      </div>
-      <div class="chart-subtitle">Compounded by your monthly growth %</div>
-      <div class="chart-wrap" style="height:170px">
-        <canvas id="b-chart"></canvas>
-      </div>
-    </div>
-
-    <div class="section-head" style="margin-top:8px">
-      <div class="section-title" style="font-size:15px">🔮 Quick Simulators</div>
-      <div class="section-desc">Single-lever what-ifs</div>
-    </div>
-
-    <!-- Club expansion -->
-    <div class="sim-card">
-      <div class="sim-title">🏢 Club Expansion</div>
-      <div class="sim-desc">Based on your actual per-club averages</div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Clubs</span><span class="sim-value-display" id="s-clubsVal">6</span></div>
-        <input type="range" id="s-clubs" min="1" max="20" value="6" oninput="simClubs()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Promo rate %</span><span class="sim-value-display" id="s-clubPromoVal">50</span>%</div>
-        <input type="range" id="s-clubPromo" min="0" max="100" value="50" oninput="simClubs()">
-      </div>
-      <div id="s-clubResults">
-        <div class="stat-row"><span class="stat-label">Monthly orders</span><span class="stat-val text-blue" id="s-clubOrders">—</span></div>
-        <div class="stat-row"><span class="stat-label">Monthly revenue</span><span class="stat-val text-green" id="s-clubRev">—</span></div>
-        <div class="stat-row"><span class="stat-label">Accounts needed</span><span class="stat-val text-orange" id="s-clubAccts">—</span></div>
-        <div class="stat-row"><span class="stat-label">Annual revenue</span><span class="stat-val text-green" id="s-clubAnnual">—</span></div>
-      </div>
-      <div id="s-clubAlert" class="sim-alert sim-alert-info">📊 Calculating…</div>
-    </div>
-
-    <!-- Promo strategy -->
-    <div class="sim-card">
-      <div class="sim-title">🎟️ Promo Strategy</div>
-      <div class="sim-desc">How promo rate affects monthly revenue</div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Promo rate %</span><span class="sim-value-display" id="s-promoVal">72</span>%</div>
-        <input type="range" id="s-promo" min="0" max="100" value="72" oninput="simPromo()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Orders/month</span><span class="sim-value-display" id="s-promoOrdersVal">85</span></div>
-        <input type="range" id="s-promoOrders" min="50" max="500" value="85" oninput="simPromo()">
-      </div>
-      <div id="s-promoResults">
-        <div class="stat-row"><span class="stat-label">Paid orders</span><span class="stat-val text-green" id="s-promoPaid">—</span></div>
-        <div class="stat-row"><span class="stat-label">Promo orders</span><span class="stat-val text-orange" id="s-promoPromo">—</span></div>
-        <div class="stat-row"><span class="stat-label">Monthly revenue</span><span class="stat-val text-green" id="s-promoRev">—</span></div>
-        <div class="stat-row"><span class="stat-label">vs current</span><span class="stat-val" id="s-promoVs">—</span></div>
-      </div>
-      <div id="s-promoAlert" class="sim-alert sim-alert-info">📊 Calculating…</div>
-    </div>
-
-    <!-- Break-even -->
-    <div class="sim-card">
-      <div class="sim-title">⚖️ Break-even</div>
-      <div class="sim-desc">Enter your monthly costs</div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Monthly fixed costs (UZS)</span></div>
-        <input type="number" id="s-fixed" placeholder="e.g. 500000" oninput="simBreakeven()">
-      </div>
-      <div class="sim-input-row">
-        <div class="sim-input-label"><span>Cost per session (UZS)</span></div>
-        <input type="number" id="s-var" placeholder="e.g. 500" oninput="simBreakeven()">
-      </div>
-      <div class="stat-row"><span class="stat-label">Break-even sessions</span><span class="stat-val" id="s-beSessions">Enter costs</span></div>
-      <div class="stat-row"><span class="stat-label">Status</span><span class="stat-val" id="s-beStatus">—</span></div>
-      <div class="stat-row"><span class="stat-label">Monthly profit</span><span class="stat-val" id="s-beProfit">—</span></div>
-    </div>
-  </div>
 
   <!-- ═══ PAGE: INSIGHTS ═══ -->
   <div class="page" id="page-insights">
@@ -757,9 +608,6 @@ input[type=number]:focus { border-color: var(--blue); }
   <button class="nav-btn" onclick="showPage('project', this)">
     <span class="icon">📅</span><span>Project</span>
   </button>
-  <button class="nav-btn" onclick="showPage('simulator', this)">
-    <span class="icon">🧮</span><span>Forecast</span>
-  </button>
   <button class="nav-btn" onclick="showPage('insights', this)">
     <span class="icon">💡</span><span>Insights</span>
   </button>
@@ -772,8 +620,6 @@ const GRID = 'rgba(255,255,255,0.05)';
 Chart.defaults.color = '#8b949e';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
 
-let PAID_PRICE = 8012, PROMO_PRICE = 300, ORDERS_PER_CLUB = 41, SESSIONS_PER_ACCOUNT = 8.34; // BUG 1 FIX
-let TOTAL_ORDERS = 594, ACTIVE_CUSTOMERS = 263, FORECAST_BASE = 390000;
 
 // ── Util ─────────────────────────────────────────────────
 function fmtNum(n) { return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':Math.round(n).toString(); }
@@ -797,7 +643,6 @@ function showPage(name, btn) {
   void page.offsetHeight; // force synchronous layout
   try {
     if      (name === 'project')   renderProjections(d.projections);
-    else if (name === 'simulator') seedBuilder(d.calc);
     else if (name === 'accounts')  renderAccounts(d.accounts, d.kickStats, d.promoStats, d.hourDist, d.dowDist, d.summary);
     else if (name === 'customers') renderCustomers(d.summary, d.signups, d.freqBuckets, d.topByOrders, d.topByRevenue);
     else if (name === 'overview')  renderOverview(d.summary, d.monthly);
@@ -835,26 +680,18 @@ async function loadDashboard(force=false) {
       return r.json();
     });
     window._lastData = d;   // cached for per-page chart redraws on tab switch
+    const s = d.summary;
 
     const ts = new Date(d.fetchedAt);
     setText('lastUpdated', ts.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
     document.getElementById('refreshBtn').textContent = '↻';
 
-    // Update live constants for simulators
-    const s = d.summary;
-    PAID_PRICE       = s.paidOrderAvg   || 8012;
-    TOTAL_ORDERS     = s.totalOrders;
-    ACTIVE_CUSTOMERS = s.activeCustomers;
-    ORDERS_PER_CLUB  = s.ordersPerClubPerMonth  || 41;   // BUG 1 FIX
-    FORECAST_BASE    = s.forecastBase           || 390000; // BUG 3 FIX
 
     renderOverview(s, d.monthly);
     renderCustomers(s, d.signups, d.freqBuckets, d.topByOrders, d.topByRevenue);
     renderAccounts(d.accounts, d.kickStats, d.promoStats, d.hourDist, d.dowDist, s);
     renderInsights(s);
     renderProjections(d.projections);
-    seedBuilder(d.calc);
-    simClubs(); simPromo();
     setLoading(false);
   } catch(e) {
     setLoading(false);
@@ -1120,175 +957,6 @@ function drawPaceChart(mode) {
   });
 }
 
-// ── FORECAST BUILDER (interactive what-if) ────────────────
-const bVal = id => parseFloat(document.getElementById(id).value) || 0;
-function seedBuilder(c) {
-  if (c) {
-    window._calc = c;
-    if (!window._builderSeeded) {
-      const set = (id, v) => { const el = document.getElementById(id); if (el != null) el.value = v; };
-      set('b-accounts', c.accounts); set('b-clubs', c.clubs); set('b-price', c.pricePerHour);
-      set('b-session', c.avgSessionHours); set('b-util', c.sessionsPerAccountPerDay);
-      set('b-demand', c.ordersPerClubPerMonth); set('b-days', c.operatingDays);
-      window._builderSeeded = true;
-    }
-  }
-  runBuilder();
-}
-function resetBuilder() { window._builderSeeded = false; seedBuilder(window._calc); }
-function runBuilder() {
-  const accounts = bVal('b-accounts'), clubs = bVal('b-clubs'), price = bVal('b-price'),
-        session = bVal('b-session'), util = bVal('b-util'), demandPer = bVal('b-demand'), days = bVal('b-days'),
-        costAcct = bVal('b-costAcct'), costClub = bVal('b-costClub'), costFixed = bVal('b-costFixed'),
-        growth = bVal('b-growth') / 100;
-  setText('b-accountsVal', accounts); setText('b-clubsVal', clubs);
-  setText('b-priceVal', Math.round(price).toLocaleString());
-  setText('b-sessionVal', session.toFixed(1)); setText('b-utilVal', util.toFixed(2));
-  setText('b-demandVal', Math.round(demandPer)); setText('b-daysVal', days);
-
-  const capacity = Math.round(accounts * util * days);
-  const demand   = Math.round(clubs * demandPer);
-  const orders   = Math.min(capacity, demand);
-  const utilization = capacity > 0 ? Math.round(orders / capacity * 100) : 0;
-  const hours    = Math.round(orders * session);
-  const revenue  = Math.round(orders * session * price);
-  const costs    = Math.round(accounts * costAcct + clubs * costClub + costFixed);
-  const profit   = revenue - costs;
-
-  setText('b-revenue', fmtUZS(revenue));
-  const profEl = document.getElementById('b-profit');
-  profEl.textContent = fmtUZS(profit);
-  profEl.className = 'big-out-val ' + (profit >= 0 ? 'text-green' : 'text-red');
-  setText('b-capacity', capacity.toLocaleString() + '/mo');
-  setText('b-demandOut', demand.toLocaleString() + '/mo');
-  setText('b-orders', orders.toLocaleString());
-  const uEl = document.getElementById('b-utilization');
-  uEl.textContent = utilization + '%';
-  uEl.className = 'stat-val ' + (utilization > 95 ? 'text-red' : utilization > 75 ? 'text-orange' : 'text-green');
-  setText('b-hoursOut', hours.toLocaleString() + ' h');
-  setText('b-costs', costs > 0 ? fmtUZS(costs) : '—');
-  setText('b-annualRev', fmtUZS(revenue * 12));
-  const apEl = document.getElementById('b-annualProfit');
-  apEl.textContent = fmtUZS(profit * 12);
-  apEl.className = 'stat-val ' + (profit >= 0 ? 'text-green' : 'text-red');
-
-  const bEl = document.getElementById('b-bottleneck');
-  if (capacity < demand) {
-    const short = demand - capacity;
-    const need = Math.max(1, Math.ceil(demand / Math.max(0.01, util * days)) - accounts);
-    bEl.innerHTML = '<div class="sim-alert sim-alert-warn">🔴 <strong>Supply-constrained</strong> — demand exceeds capacity by ' + short.toLocaleString() + '/mo. Add ~' + need + ' accounts.</div>';
-  } else if (demand < capacity * 0.7) {
-    const idle = capacity - demand;
-    const moreClubs = Math.max(1, Math.ceil(capacity / Math.max(1, demandPer)) - clubs);
-    bEl.innerHTML = '<div class="sim-alert sim-alert-info">🟡 <strong>Demand-constrained</strong> — ' + idle.toLocaleString() + ' idle sessions/mo. Add ~' + moreClubs + ' clubs.</div>';
-  } else {
-    bEl.innerHTML = '<div class="sim-alert sim-alert-ok">🟢 <strong>Well balanced</strong> at ' + utilization + '% utilization.</div>';
-  }
-  drawBuilderChart(revenue, profit, growth);
-}
-function drawBuilderChart(rev0, profit0, growth) {
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  let m;
-  if (window._proj) { m = parseInt(window._proj.monthKey.split('-')[1], 10); }
-  else { m = new Date().getMonth() + 1; }
-  const labels = [], rev = [], prof = [];
-  let r = rev0, pr = profit0, year1 = 0;
-  for (let i = 0; i < 12; i++) {
-    labels.push(MONTHS[(m - 1 + i) % 12]);
-    rev.push(Math.round(r)); prof.push(Math.round(pr)); year1 += r;
-    r *= (1 + growth); pr *= (1 + growth);
-  }
-  setText('b-year1', fmtUZS(Math.round(year1)));
-  mkChart('b-chart', {
-    type: 'bar',
-    data: { labels, datasets: [
-      { type: 'bar',  data: rev,  backgroundColor: 'rgba(63,185,80,0.55)', borderRadius: 3, order: 2 },
-      { type: 'line', data: prof, borderColor: '#a371f7', backgroundColor: 'rgba(163,113,247,0.1)', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, order: 1 }
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: { x: { ticks: { color: TICK, font: { size: 8 } }, grid: { display: false } },
-                y: { ticks: { color: TICK, font: { size: 9 }, callback: v => fmtNum(v) }, grid: { color: GRID } } } }
-  });
-}
-
-// ── SIMULATORS ────────────────────────────────────────────
-function simClubs() {
-  const clubs    = parseInt(document.getElementById('s-clubs').value);
-  const promoRate= parseInt(document.getElementById('s-clubPromo').value)/100;
-  setText('s-clubsVal',    clubs);
-  setText('s-clubPromoVal',Math.round(promoRate*100));
-
-  const monthlyOrders = clubs * ORDERS_PER_CLUB;
-  const paidOrd  = monthlyOrders*(1-promoRate);
-  const promoOrd = monthlyOrders*promoRate;
-  const rev      = paidOrd*PAID_PRICE + promoOrd*PROMO_PRICE;
-  const accts    = Math.ceil(monthlyOrders/SESSIONS_PER_ACCOUNT);
-
-  setText('s-clubOrders', Math.round(monthlyOrders)+'/month');
-  setText('s-clubRev',    fmtUZS(Math.round(rev)));
-  setText('s-clubAccts',  accts+' accounts');
-  setText('s-clubAnnual', fmtUZS(Math.round(rev*12)));
-
-  const al = document.getElementById('s-clubAlert');
-  if (clubs<=2)       { al.className='sim-alert sim-alert-info'; al.textContent='📊 Original 2-club baseline.'; }
-  else if (clubs===6) { al.className='sim-alert sim-alert-info'; al.textContent='📊 Your current 6-club state.'; }
-  else if (clubs>10)  { al.className='sim-alert sim-alert-warn'; al.textContent='⚠️ Need '+accts+' accounts at '+clubs+' clubs.'; }
-  else                { al.className='sim-alert sim-alert-ok';   al.textContent='✅ '+Math.round(monthlyOrders)+' orders/month — manageable.'; }
-}
-
-function simPromo() {
-  const pr      = parseInt(document.getElementById('s-promo').value)/100;
-  const ordMo   = parseInt(document.getElementById('s-promoOrders').value);
-  setText('s-promoVal',       Math.round(pr*100));
-  setText('s-promoOrdersVal', ordMo);
-
-  const paid  = Math.round(ordMo*(1-pr));
-  const promo = Math.round(ordMo*pr);
-  const rev   = paid*PAID_PRICE + promo*PROMO_PRICE;
-  const base  = Math.round(28*PAID_PRICE + 58*PROMO_PRICE);
-  const pct   = Math.round((rev-base)/base*100);
-
-  setText('s-promoPaid',  paid);
-  setText('s-promoPromo', promo);
-  setText('s-promoRev',   fmtUZS(Math.round(rev)));
-
-  const vsEl = document.getElementById('s-promoVs');
-  vsEl.textContent = (pct>=0?'+':'')+pct+'%';
-  vsEl.className = 'stat-val '+(pct>=0?'text-green':'text-red');
-
-  const al = document.getElementById('s-promoAlert');
-  if (pr<0.3)      { al.className='sim-alert sim-alert-ok';   al.textContent='✅ Low promo — strong revenue signal.'; }
-  else if (pr<0.5) { al.className='sim-alert sim-alert-ok';   al.textContent='✅ Healthy balance. Target: 30–50%.'; }
-  else if (pr>0.7) { al.className='sim-alert sim-alert-warn'; al.textContent='⚠️ High dependency. Reduce gradually.'; }
-  else             { al.className='sim-alert sim-alert-info'; al.textContent='📊 Good progress toward &lt;50%.'; }
-}
-
-function simBreakeven() {
-  const fixed = parseFloat(document.getElementById('s-fixed').value)||0;
-  const varC  = parseFloat(document.getElementById('s-var').value)||0;
-  const margin = PAID_PRICE - varC;
-
-  if (margin<=0) { setText('s-beSessions','∞ variable cost too high'); return; }
-  if (!fixed)    { setText('s-beSessions','Enter costs above'); setText('s-beStatus','—'); setText('s-beProfit','—'); return; }
-
-  const be     = Math.ceil(fixed/margin);
-  const curr   = Math.round(TOTAL_ORDERS/7);
-  const proj6  = ORDERS_PER_CLUB*6;
-
-  setText('s-beSessions', be+' sessions/month');
-  const stEl = document.getElementById('s-beStatus');
-  const prEl = document.getElementById('s-beProfit');
-  if (curr>=be) {
-    stEl.textContent='✅ Profitable now'; stEl.className='stat-val text-green';
-    prEl.textContent=fmtUZS(Math.round(curr*margin-fixed))+'/mo'; prEl.className='stat-val text-green';
-  } else if (proj6>=be) {
-    stEl.textContent='⚠️ Profitable at 6-club scale'; stEl.className='stat-val text-orange';
-    prEl.textContent=fmtUZS(Math.round(proj6*margin-fixed))+'/mo (6 clubs)'; prEl.className='stat-val text-green';
-  } else {
-    stEl.textContent='🔴 Need more scale'; stEl.className='stat-val text-red';
-    prEl.textContent=fmtUZS(Math.round(curr*margin-fixed))+'/mo (negative)'; prEl.className='stat-val text-red';
-  }
-}
 
 // ── Auto refresh every 60s ─────────────────────────────────
 setInterval(()=>loadDashboard(false), 60000);
