@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BlazeRent Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:     #0d1117;
+  --bg2:    #161b22;
+  --bg3:    #21262d;
+  --bg4:    #2d333b;
+  --border: #30363d;
+  --text:   #e6edf3;
+  --muted:  #8b949e;
+  --dim:    #6e7681;
+  --blue:   #58a6ff;
+  --green:  #3fb950;
+  --purple: #a371f7;
+  --orange: #d29922;
+  --red:    #f85149;
+  --teal:   #39d353;
+  --pink:   #f778ba;
+  --nav-h:  64px;
+  --top-h:  56px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+/* ── TOP BAR ───────────────────────────────────────────── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--top-h); background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+}
+.topbar-logo { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+.logo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 6px var(--orange); flex-shrink: 0; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.ts-label { font-size: 11px; color: var(--dim); }
+.refresh-btn {
+  background: var(--bg4); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; color: var(--muted); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+.refresh-btn:active { background: var(--bg3); }
+
+/* ── LOADING BAR ───────────────────────────────────────── */
+#loadingBar {
+  position: fixed; top: var(--top-h); left: 0; right: 0; z-index: 101;
+  height: 2px; background: var(--blue); width: 0%;
+  transition: width 0.4s ease, opacity 0.4s ease;
+}
+#errorBanner {
+  position: fixed; top: calc(var(--top-h) + 2px); left: 0; right: 0; z-index: 101;
+  background: rgba(248,81,73,0.12); border-bottom: 1px solid rgba(248,81,73,0.3);
+  padding: 8px 16px; font-size: 12px; color: var(--red); display: none;
+}
+
+/* ── SCROLL CONTAINER ──────────────────────────────────── */
+.page-wrap {
+  position: fixed; top: var(--top-h); left: 0; right: 0;
+  bottom: var(--nav-h); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.page { display: none; padding: 16px 16px 8px; min-height: 100%; }
+.page.active { display: block; }
+
+/* ── BOTTOM NAV ────────────────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-h); background: var(--bg2);
+  border-top: 1px solid var(--border);
+  display: grid; grid-template-columns: repeat(6, 1fr);
+}
+.nav-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; background: none; border: none; cursor: pointer;
+  color: var(--dim); font-size: 9px; font-weight: 500; padding: 8px 0;
+  transition: color 0.15s;
+}
+.nav-btn .icon { font-size: 18px; line-height: 1; }
+.nav-btn.active { color: var(--blue); }
+.nav-btn.active .icon { filter: drop-shadow(0 0 4px var(--blue)); }
+
+/* ── KPI CARDS ─────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.kpi-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 12px; position: relative; overflow: hidden;
+}
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.kpi-blue::before   { background: var(--blue); }
+.kpi-green::before  { background: var(--green); }
+.kpi-purple::before { background: var(--purple); }
+.kpi-teal::before   { background: var(--teal); }
+.kpi-orange::before { background: var(--orange); }
+.kpi-red::before    { background: var(--red); }
+.kpi-pink::before   { background: var(--pink); }
+.kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.kpi-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.kpi-trend { font-size: 10px; font-weight: 500; margin-top: 3px; }
+.trend-up   { color: var(--green); }
+.trend-down { color: var(--red); }
+.trend-neutral { color: var(--orange); }
+.kpi-wide { grid-column: 1/-1; }
+
+/* ── SECTION HEADER ────────────────────────────────────── */
+.section-head { margin-bottom: 14px; }
+.section-title { font-size: 16px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.section-desc  { font-size: 12px; color: var(--muted); }
+
+/* ── CHART CARD ────────────────────────────────────────── */
+.chart-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 12px;
+}
+.chart-title    { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.chart-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+.chart-wrap     { position: relative; width: 100%; }
+.chart-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+/* ── TIME DIST TOGGLE ──────────────────────────────────── */
+.time-toggle { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 2px; border: 1px solid var(--border); }
+.time-toggle button {
+  background: none; border: none; border-radius: 6px;
+  padding: 3px 11px; font-size: 11px; font-weight: 500; color: var(--muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.time-toggle button.tog-active { background: var(--bg3); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+/* ── MONTH PROGRESS + BUILDER ──────────────────────────── */
+.progress-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+.progress-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.progress-top strong { color: var(--text); }
+.progress-track { height: 8px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); border-radius: 5px; transition: width 0.6s ease; }
+.big-out-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.big-out { background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; }
+.big-out-val { font-size: 19px; font-weight: 700; line-height: 1.1; }
+.big-out-label { font-size: 9px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── STAT ROW ──────────────────────────────────────────── */
+.stat-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid rgba(48,54,61,0.6);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { font-size: 12px; color: var(--muted); }
+.stat-val   { font-size: 13px; font-weight: 600; }
+.text-green  { color: var(--green); }
+.text-red    { color: var(--red); }
+.text-blue   { color: var(--blue); }
+.text-orange { color: var(--orange); }
+.text-purple { color: var(--purple); }
+.text-muted  { color: var(--muted); }
+
+/* ── TABLE ─────────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+.data-table td { padding: 8px; font-size: 12px; border-bottom: 1px solid rgba(48,54,61,0.5); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:active td { background: var(--bg4); }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; font-weight: 700; }
+.rank-1 { background: rgba(210,153,34,0.2); color: var(--orange); }
+.rank-2 { background: rgba(139,148,158,0.2); color: var(--muted); }
+.rank-3 { background: rgba(99,59,33,0.3); color: #c9762a; }
+.rank-n { background: var(--bg4); color: var(--dim); }
+
+/* ── BADGE ─────────────────────────────────────────────── */
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-green  { background: rgba(63,185,80,0.15);  color: var(--green);  border: 1px solid rgba(63,185,80,0.3); }
+.badge-red    { background: rgba(248,81,73,0.15);  color: var(--red);    border: 1px solid rgba(248,81,73,0.3); }
+.badge-orange { background: rgba(210,153,34,0.15); color: var(--orange); border: 1px solid rgba(210,153,34,0.3); }
+.badge-blue   { background: rgba(88,166,255,0.15); color: var(--blue);   border: 1px solid rgba(88,166,255,0.3); }
+
+/* ── INSIGHT CARD ──────────────────────────────────────── */
+.insight-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 10px; display: flex; gap: 10px;
+}
+.insight-icon { font-size: 18px; flex-shrink: 0; }
+.insight-body .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.insight-body .insight-text  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.priority { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+.p-high { background: rgba(248,81,73,0.15);  color: var(--red); }
+.p-med  { background: rgba(210,153,34,0.15); color: var(--orange); }
+.p-good { background: rgba(63,185,80,0.15);  color: var(--green); }
+.p-info { background: rgba(88,166,255,0.15); color: var(--blue); }
+
+/* ── SIMULATOR ─────────────────────────────────────────── */
+.sim-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; margin-bottom: 12px;
+}
+.sim-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.sim-desc  { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.sim-input-row { margin-bottom: 14px; }
+.sim-input-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+.sim-value-display { font-weight: 700; color: var(--text); font-size: 14px; }
+input[type=range] { width: 100%; -webkit-appearance: none; appearance: none; height: 5px; background: var(--border); border-radius: 3px; outline: none; cursor: pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); cursor: pointer; }
+input[type=number] { background: var(--bg4); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; width: 100%; outline: none; }
+input[type=number]:focus { border-color: var(--blue); }
+.sim-alert { padding: 10px 12px; border-radius: 8px; font-size: 12px; margin-top: 10px; }
+.sim-alert-warn { background: rgba(210,153,34,0.1); border: 1px solid rgba(210,153,34,0.3); color: var(--orange); }
+.sim-alert-ok   { background: rgba(63,185,80,0.1);  border: 1px solid rgba(63,185,80,0.3);  color: var(--green); }
+.sim-alert-info { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--blue); }
+
+/* ── FUNNEL ────────────────────────────────────────────── */
+.funnel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.funnel-label { font-size: 11px; color: var(--muted); width: 90px; flex-shrink: 0; }
+.funnel-bar-bg { flex: 1; background: var(--bg4); border-radius: 4px; height: 24px; overflow: hidden; }
+.funnel-bar { height: 100%; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: white; transition: width 0.5s ease; white-space: nowrap; overflow: hidden; }
+.funnel-count { font-size: 12px; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0; }
+
+/* ── PROGRESS BAR ──────────────────────────────────────── */
+.prog-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.prog-label { font-size: 11px; color: var(--muted); width: 100px; flex-shrink: 0; }
+.prog-bg { flex: 1; background: var(--bg4); border-radius: 3px; height: 6px; }
+.prog-fill { height: 100%; border-radius: 3px; }
+.prog-val { font-size: 11px; font-weight: 600; width: 36px; text-align: right; flex-shrink: 0; }
+
+/* ── RELIABILITY CARD ──────────────────────────────────── */
+.rel-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px; margin-bottom: 8px;
+}
+.rel-name { font-size: 12px; font-weight: 600; flex: 1; }
+.rel-bar-wrap { flex: 1.5; }
+.rel-bar-bg { background: var(--bg4); border-radius: 3px; height: 8px; }
+.rel-bar-fill { height: 100%; border-radius: 3px; background: var(--red); }
+.rel-pct { font-size: 12px; font-weight: 700; width: 36px; text-align: right; }
+
+/* ── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── SAFE AREA ─────────────────────────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .bottom-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+  .page-wrap  { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo"><span class="logo-dot"></span>BlazeRent</div>
+  <div class="topbar-right">
+    <span class="ts-label" id="lastUpdated">Loading…</span>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadDashboard(true)">↻</button>
+  </div>
+</div>
+<div id="loadingBar"></div>
+<div id="errorBanner"></div>
+
+<!-- SCROLL CONTAINER -->
+<div class="page-wrap" id="pageWrap">
+
+  <!-- ═══ PAGE: OVERVIEW ═══ -->
+  <div class="page active" id="page-overview">
+    <div class="section-head">
+      <div class="section-title">📊 Overview</div>
+      <div class="section-desc" id="ov-desc">All-time performance</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-value" id="m-totalOrders">—</div>
+        <div class="kpi-sub" id="m-pending">—</div>
+        <div class="kpi-trend trend-up" id="m-growthTrend">—</div>
+      </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-label">Revenue</div>
+        <div class="kpi-value" id="m-revenue">—</div>
+        <div class="kpi-sub">UZS · paid_amount</div>
+        <div class="kpi-trend trend-up">Live from Sheets</div>
+      </div>
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-label">Customers</div>
+        <div class="kpi-value" id="m-customers">—</div>
+        <div class="kpi-sub" id="m-active">—</div>
+        <div class="kpi-trend trend-up" id="m-activation">—</div>
+      </div>
+      <div class="kpi-card kpi-teal">
+        <div class="kpi-label">Hours Played</div>
+        <div class="kpi-value" id="m-hours">—</div>
+        <div class="kpi-sub" id="m-avgHours">—</div>
+        <div class="kpi-trend trend-neutral" id="m-peakDay">—</div>
+      </div>
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-label">Avg Order</div>
+        <div class="kpi-value" id="m-avgOrder">—</div>
+        <div class="kpi-sub">UZS blended</div>
+        <div class="kpi-trend trend-neutral" id="m-paidAvg">—</div>
+      </div>
+      <div class="kpi-card kpi-red">
+        <div class="kpi-label">Promo Rate</div>
+        <div class="kpi-value" id="m-promoRate">—</div>
+        <div class="kpi-sub" id="m-promoCount">—</div>
+        <div class="kpi-trend trend-down">Target &lt;40%</div>
+      </div>
+      <div class="kpi-card kpi-pink kpi-wide">
+        <div class="kpi-label">Revenue Foregone</div>
+        <div class="kpi-value" id="m-discounts">—</div>
+        <div class="kpi-sub">UZS · price − paid_amount (real cost)</div>
+        <div class="kpi-trend trend-down" id="m-discountRatio">—</div>
+      </div>
+    </div>
+
+    <!-- Monthly chart -->
+    <div class="chart-card">
+      <div class="chart-title">Monthly Revenue & Orders</div>
+      <div class="chart-subtitle">Bars = orders · Line = revenue (UZS)</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="m-revenueChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Promo rate trend -->
+    <div class="chart-card">
+      <div class="chart-title">Promo Rate by Month</div>
+      <div class="chart-subtitle">Trending down = paying more customers</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="m-promoTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: CUSTOMERS ═══ -->
+  <div class="page" id="page-customers">
+    <div class="section-head">
+      <div class="section-title">👥 Customers</div>
+      <div class="section-desc">Funnel, frequency, top performers</div>
+    </div>
+
+    <!-- Funnel -->
+    <div class="chart-card">
+      <div class="chart-title">Customer Funnel</div>
+      <div style="margin-top:8px">
+        <div class="funnel-row" id="mf-registered">
+          <div class="funnel-label">Registered</div>
+          <div class="funnel-bar-bg"><div class="funnel-bar" style="width:100%;background:#58a6ff">—</div></div>
+          <div class="funnel-count text-blue">—</div>
+        </div>
+        <div class="funnel-row" id="mf-active">
+          <div class="funnel-label">Active (≥1)</div>
+          <div class="funnel-bar-bg"><div class="funnel-bar" style="width:67%;background:#3fb950">—</div></div>
+          <div class="funnel-count text-green">—</div>
+        </div>
+        <div class="funnel-row" id="mf-regular">
+          <div class="funnel-label">Regular (≥3)</div>
+          <div class="funnel-bar-bg"><div class="funnel-bar" style="width:37%;background:#a371f7">—</div></div>
+          <div class="funnel-count text-purple">—</div>
+        </div>
+        <div class="funnel-row" id="mf-never">
+          <div class="funnel-label">Never ordered</div>
+          <div class="funnel-bar-bg"><div class="funnel-bar" style="width:33%;background:#f85149">—</div></div>
+          <div class="funnel-count text-red">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frequency chart -->
+    <div class="chart-card">
+      <div class="chart-title">Order Frequency</div>
+      <div class="chart-subtitle">How often do customers order?</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="m-freqChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Signups chart -->
+    <div class="chart-card">
+      <div class="chart-title">New Signups by Month</div>
+      <div class="chart-subtitle" id="m-signupSubtitle">—</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="m-signupChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top 10 by orders -->
+    <div class="chart-card">
+      <div class="chart-title">Top 10 by Orders</div>
+      <table class="data-table" style="margin-top:8px">
+        <thead><tr><th>#</th><th>Name</th><th>Orders</th><th>Revenue</th></tr></thead>
+        <tbody id="m-topOrdersTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Top 10 by revenue -->
+    <div class="chart-card">
+      <div class="chart-title">Top 10 by Revenue</div>
+      <table class="data-table" style="margin-top:8px">
+        <thead><tr><th>#</th><th>Name</th><th>Revenue</th><th>Orders</th></tr></thead>
+        <tbody id="m-topRevenueTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: ACCOUNTS ═══ -->
+  <div class="page" id="page-accounts">
+    <div class="section-head">
+      <div class="section-title">🎮 Accounts & Reliability</div>
+      <div class="section-desc">Steam account usage and kick success rates</div>
+    </div>
+
+    <!-- Account utilization chart -->
+    <div class="chart-card">
+      <div class="chart-title">Sessions per Account</div>
+      <div class="chart-subtitle">Top 10 accounts by usage</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="m-accountChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Kick reliability -->
+    <div class="chart-card">
+      <div class="chart-title">🔴 Kick Reliability</div>
+      <div class="chart-subtitle">Session kick success rate overall</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:700" id="m-kickTotal">—</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Total kicks</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:var(--green)" id="m-kickSuccess">—</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Success</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:18px;font-weight:700;color:var(--red)" id="m-kickFail">—</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Failed</div>
+        </div>
+      </div>
+      <div class="chart-title" style="margin-bottom:8px;font-size:12px;">Accounts with Highest Fail Rate</div>
+      <div id="m-reliabilityList"></div>
+    </div>
+
+    <!-- Promo codes -->
+    <div class="chart-card">
+      <div class="chart-title">🎟️ Promo Codes</div>
+      <table class="data-table" style="margin-top:8px">
+        <thead><tr><th>Code</th><th>Value</th><th>Used</th><th>Max</th></tr></thead>
+        <tbody id="m-promoTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Hour of day / Day of week -->
+    <div class="chart-card">
+      <div class="chart-title-row">
+        <div class="chart-title">Orders by Time</div>
+        <div class="time-toggle">
+          <button id="btn-hour" class="tog-active" onclick="switchTimeDist('hour')">Hour</button>
+          <button id="btn-dow" onclick="switchTimeDist('dow')">Day</button>
+        </div>
+      </div>
+      <div class="chart-subtitle" id="m-peakHourLabel">Peak: —</div>
+      <div class="chart-wrap" style="height:140px">
+        <canvas id="m-hourChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: PROJECTIONS ═══ -->
+  <div class="page" id="page-project">
+    <div class="section-head">
+      <div class="section-title">📅 This Month</div>
+      <div class="section-desc" id="pj-desc">Projected finish based on pace so far</div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-top">
+        <span><strong id="pj-month">—</strong></span>
+        <span><strong id="pj-dayinfo">—</strong> · <span id="pj-conf">—</span></span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="pj-progress" style="width:0%"></div></div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-label">Proj. Orders</div>
+        <div class="kpi-value" id="pj-orders">—</div>
+        <div class="kpi-sub" id="pj-orders-mtd">—</div>
+        <div class="kpi-trend" id="pj-orders-trend">—</div>
+      </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-label">Proj. Revenue</div>
+        <div class="kpi-value" id="pj-revenue">—</div>
+        <div class="kpi-sub" id="pj-revenue-mtd">—</div>
+        <div class="kpi-trend" id="pj-revenue-trend">—</div>
+      </div>
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-label">Proj. New Users</div>
+        <div class="kpi-value" id="pj-signups">—</div>
+        <div class="kpi-sub" id="pj-signups-mtd">—</div>
+        <div class="kpi-trend" id="pj-signups-trend">—</div>
+      </div>
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-label">Proj. Hours</div>
+        <div class="kpi-value" id="pj-hours">—</div>
+        <div class="kpi-sub" id="pj-hours-mtd">—</div>
+        <div class="kpi-trend" id="pj-hours-trend">—</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title-row">
+        <div class="chart-title">Pace — Actual vs Finish</div>
+        <div class="time-toggle">
+          <button id="pj-pace-revenue" class="tog-active" onclick="switchPace('revenue')">UZS</button>
+          <button id="pj-pace-orders" onclick="switchPace('orders')">Orders</button>
+        </div>
+      </div>
+      <div class="chart-subtitle">Solid = so far · dashed = projected finish · grey = last month</div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="pj-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: SIMULATOR ═══ -->
+  <div class="page" id="page-simulator">
+    <div class="section-head">
+      <div class="section-title">🧮 Forecast Builder</div>
+      <div class="section-desc">Model your business — change inputs, see outputs</div>
+    </div>
+
+    <!-- Interactive Builder -->
+    <div class="sim-card">
+      <div class="sim-title">⚙️ Build your scenario</div>
+      <div class="sim-desc">Pre-filled with your real numbers. <span onclick="resetBuilder()" style="color:var(--blue)">↺ Reset</span></div>
+
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Steam accounts</span><span class="sim-value-display" id="b-accountsVal">25</span></div>
+        <input type="range" id="b-accounts" min="1" max="150" value="25" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Computer clubs</span><span class="sim-value-display" id="b-clubsVal">2</span></div>
+        <input type="range" id="b-clubs" min="1" max="40" value="2" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Price per hour (UZS)</span><span class="sim-value-display" id="b-priceVal">1,096</span></div>
+        <input type="range" id="b-price" min="500" max="15000" step="100" value="1096" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Avg session (hours)</span><span class="sim-value-display" id="b-sessionVal">2.2</span></div>
+        <input type="range" id="b-session" min="0.5" max="8" step="0.1" value="2.2" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Sessions / account / day</span><span class="sim-value-display" id="b-utilVal">2.00</span></div>
+        <input type="range" id="b-util" min="0.05" max="10" step="0.01" value="2" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Orders / club / month</span><span class="sim-value-display" id="b-demandVal">41</span></div>
+        <input type="range" id="b-demand" min="5" max="400" value="41" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Operating days / month</span><span class="sim-value-display" id="b-daysVal">30</span></div>
+        <input type="range" id="b-days" min="20" max="31" value="30" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Cost / account / mo (UZS)</span></div>
+        <input type="number" id="b-costAcct" placeholder="optional" value="0" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Cost / club / mo (UZS)</span></div>
+        <input type="number" id="b-costClub" placeholder="optional" value="0" oninput="runBuilder()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Other fixed / mo · Growth %</span></div>
+        <div style="display:flex;gap:8px">
+          <input type="number" id="b-costFixed" placeholder="fixed" value="0" oninput="runBuilder()">
+          <input type="number" id="b-growth" placeholder="growth %" value="10" oninput="runBuilder()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Builder outputs -->
+    <div class="sim-card">
+      <div class="sim-title">📊 Projected Outcome</div>
+      <div class="big-out-grid">
+        <div class="big-out"><div class="big-out-val text-green" id="b-revenue">—</div><div class="big-out-label">Monthly Revenue</div></div>
+        <div class="big-out"><div class="big-out-val" id="b-profit">—</div><div class="big-out-label">Monthly Profit</div></div>
+      </div>
+      <div id="b-bottleneck" style="margin-bottom:12px"></div>
+      <div class="stat-row"><span class="stat-label">Account capacity</span><span class="stat-val text-blue" id="b-capacity">—</span></div>
+      <div class="stat-row"><span class="stat-label">Club demand</span><span class="stat-val text-orange" id="b-demandOut">—</span></div>
+      <div class="stat-row"><span class="stat-label">Actual orders / mo</span><span class="stat-val text-blue" id="b-orders">—</span></div>
+      <div class="stat-row"><span class="stat-label">Utilization</span><span class="stat-val" id="b-utilization">—</span></div>
+      <div class="stat-row"><span class="stat-label">Hours rented / mo</span><span class="stat-val" id="b-hoursOut">—</span></div>
+      <div class="stat-row"><span class="stat-label">Costs / mo</span><span class="stat-val text-red" id="b-costs">—</span></div>
+      <div class="stat-row"><span class="stat-label">Annual revenue</span><span class="stat-val text-green" id="b-annualRev">—</span></div>
+      <div class="stat-row"><span class="stat-label">Annual profit</span><span class="stat-val" id="b-annualProfit">—</span></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title-row">
+        <div class="chart-title">12-Month Projection</div>
+        <div class="chart-subtitle" style="margin:0">Yr1: <strong class="text-green" id="b-year1">—</strong></div>
+      </div>
+      <div class="chart-subtitle">Compounded by your monthly growth %</div>
+      <div class="chart-wrap" style="height:170px">
+        <canvas id="b-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-head" style="margin-top:8px">
+      <div class="section-title" style="font-size:15px">🔮 Quick Simulators</div>
+      <div class="section-desc">Single-lever what-ifs</div>
+    </div>
+
+    <!-- Club expansion -->
+    <div class="sim-card">
+      <div class="sim-title">🏢 Club Expansion</div>
+      <div class="sim-desc">Based on your actual per-club averages</div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Clubs</span><span class="sim-value-display" id="s-clubsVal">6</span></div>
+        <input type="range" id="s-clubs" min="1" max="20" value="6" oninput="simClubs()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Promo rate %</span><span class="sim-value-display" id="s-clubPromoVal">50</span>%</div>
+        <input type="range" id="s-clubPromo" min="0" max="100" value="50" oninput="simClubs()">
+      </div>
+      <div id="s-clubResults">
+        <div class="stat-row"><span class="stat-label">Monthly orders</span><span class="stat-val text-blue" id="s-clubOrders">—</span></div>
+        <div class="stat-row"><span class="stat-label">Monthly revenue</span><span class="stat-val text-green" id="s-clubRev">—</span></div>
+        <div class="stat-row"><span class="stat-label">Accounts needed</span><span class="stat-val text-orange" id="s-clubAccts">—</span></div>
+        <div class="stat-row"><span class="stat-label">Annual revenue</span><span class="stat-val text-green" id="s-clubAnnual">—</span></div>
+      </div>
+      <div id="s-clubAlert" class="sim-alert sim-alert-info">📊 Calculating…</div>
+    </div>
+
+    <!-- Promo strategy -->
+    <div class="sim-card">
+      <div class="sim-title">🎟️ Promo Strategy</div>
+      <div class="sim-desc">How promo rate affects monthly revenue</div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Promo rate %</span><span class="sim-value-display" id="s-promoVal">72</span>%</div>
+        <input type="range" id="s-promo" min="0" max="100" value="72" oninput="simPromo()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Orders/month</span><span class="sim-value-display" id="s-promoOrdersVal">85</span></div>
+        <input type="range" id="s-promoOrders" min="50" max="500" value="85" oninput="simPromo()">
+      </div>
+      <div id="s-promoResults">
+        <div class="stat-row"><span class="stat-label">Paid orders</span><span class="stat-val text-green" id="s-promoPaid">—</span></div>
+        <div class="stat-row"><span class="stat-label">Promo orders</span><span class="stat-val text-orange" id="s-promoPromo">—</span></div>
+        <div class="stat-row"><span class="stat-label">Monthly revenue</span><span class="stat-val text-green" id="s-promoRev">—</span></div>
+        <div class="stat-row"><span class="stat-label">vs current</span><span class="stat-val" id="s-promoVs">—</span></div>
+      </div>
+      <div id="s-promoAlert" class="sim-alert sim-alert-info">📊 Calculating…</div>
+    </div>
+
+    <!-- Break-even -->
+    <div class="sim-card">
+      <div class="sim-title">⚖️ Break-even</div>
+      <div class="sim-desc">Enter your monthly costs</div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Monthly fixed costs (UZS)</span></div>
+        <input type="number" id="s-fixed" placeholder="e.g. 500000" oninput="simBreakeven()">
+      </div>
+      <div class="sim-input-row">
+        <div class="sim-input-label"><span>Cost per session (UZS)</span></div>
+        <input type="number" id="s-var" placeholder="e.g. 500" oninput="simBreakeven()">
+      </div>
+      <div class="stat-row"><span class="stat-label">Break-even sessions</span><span class="stat-val" id="s-beSessions">Enter costs</span></div>
+      <div class="stat-row"><span class="stat-label">Status</span><span class="stat-val" id="s-beStatus">—</span></div>
+      <div class="stat-row"><span class="stat-label">Monthly profit</span><span class="stat-val" id="s-beProfit">—</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: INSIGHTS ═══ -->
+  <div class="page" id="page-insights">
+    <div class="section-head">
+      <div class="section-title">💡 Insights</div>
+      <div class="section-desc">Prioritized actions from your data</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🔴</div>
+      <div class="insight-body">
+        <div class="insight-title">Kick system only 10% reliable <span class="priority p-high">Critical</span></div>
+        <div class="insight-text">2,339 kick attempts, only 235 succeeded (10%). GUARD_FAILED accounts for 556 failures — Steam Guard is blocking auto-kicks. This means sessions don't end cleanly for ~90% of orders.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🔴</div>
+      <div class="insight-body">
+        <div class="insight-title">72% promo dependency <span class="priority p-high">High Priority</span></div>
+        <div class="insight-text">6.4M UZS in discounts vs 1.37M revenue. Validation phase is done — reduce to &lt;40% by Q3 2026. Jun already at 22% promo — great signal.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🟡</div>
+      <div class="insight-body">
+        <div class="insight-title"><span id="i-neverOrdered">—</span> never-ordered users <span class="priority p-med">Medium</span></div>
+        <div class="insight-text">Registered but haven't placed a single order. One targeted message could convert 20–40% of them into paying customers.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🟢</div>
+      <div class="insight-body">
+        <div class="insight-title">Promo rate falling fast <span class="priority p-good">Positive</span></div>
+        <div class="insight-text">Nov: 97% promo → Jun: 22% promo. That's the healthiest trend in your data. At this rate you'll hit &lt;20% promo by Aug.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🟢</div>
+      <div class="insight-body">
+        <div class="insight-title">Peak time: 10pm on Saturdays <span class="priority p-info">FYI</span></div>
+        <div class="insight-text">Most orders come in at 22:00 on Saturdays. Schedule any maintenance, promos, or pushes around this window for maximum impact.</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-icon">🔴</div>
+      <div class="insight-body">
+        <div class="insight-title">Plaintext passwords in sheet <span class="priority p-high">Security</span></div>
+        <div class="insight-text">CUSTOMERS sheet has unhashed passwords (e.g. "123", "qwerty"). If this sheet leaks, accounts are exposed. Hash all passwords server-side immediately.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.3);border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:6px">Business Verdict</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Continue — Aug 2026 is the proof window</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">6 clubs, falling promo rate, 15× revenue growth — organic demand is real. Fix the kick system, keep reducing promos.</div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showPage('overview', this)">
+    <span class="icon">📊</span><span>Overview</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('customers', this)">
+    <span class="icon">👥</span><span>Customers</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('accounts', this)">
+    <span class="icon">🎮</span><span>Accounts</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('project', this)">
+    <span class="icon">📅</span><span>Project</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('simulator', this)">
+    <span class="icon">🧮</span><span>Forecast</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('insights', this)">
+    <span class="icon">💡</span><span>Insights</span>
+  </button>
+</nav>
+
+<script>
+const API_BASE = '/api';  // same-origin: works locally and on Railway
+const TICK = '#6e7681';
+const GRID = 'rgba(255,255,255,0.05)';
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+let PAID_PRICE = 8012, PROMO_PRICE = 300, ORDERS_PER_CLUB = 41, SESSIONS_PER_ACCOUNT = 8.34; // BUG 1 FIX
+let TOTAL_ORDERS = 594, ACTIVE_CUSTOMERS = 263, FORECAST_BASE = 390000;
+
+// ── Util ─────────────────────────────────────────────────
+function fmtNum(n) { return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?Math.round(n/1000)+'K':Math.round(n).toString(); }
+function fmtUZS(n) { return fmtNum(n)+' UZS'; }
+function setText(id, v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function monthLabel(k) { return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(k.split('-')[1])-1]; }
+
+// ── Page nav ─────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const page = document.getElementById('page-'+name);
+  page.classList.add('active');
+  if (btn) btn.classList.add('active');
+  document.getElementById('pageWrap').scrollTop = 0;
+  // Charts built while their page was display:none render at 0 height (no layout).
+  // Force a reflow so the now-visible page has real dimensions, then re-draw its
+  // charts from the cached payload (mkChart destroys + rebuilds at correct size).
+  const d = window._lastData;
+  if (!d) return;
+  void page.offsetHeight; // force synchronous layout
+  try {
+    if      (name === 'project')   renderProjections(d.projections);
+    else if (name === 'simulator') seedBuilder(d.calc);
+    else if (name === 'accounts')  renderAccounts(d.accounts, d.kickStats, d.promoStats, d.hourDist, d.dowDist, d.summary);
+    else if (name === 'customers') renderCustomers(d.summary, d.signups, d.freqBuckets, d.topByOrders, d.topByRevenue);
+    else if (name === 'overview')  renderOverview(d.summary, d.monthly);
+  } catch (e) {}
+}
+
+// ── Loading ───────────────────────────────────────────────
+function setLoading(on) {
+  const bar = document.getElementById('loadingBar');
+  bar.style.width = on ? '80%' : '100%';
+  bar.style.opacity = on ? '1' : '0';
+  setTimeout(() => { if(!on) bar.style.width='0%'; }, 500);
+}
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = '⚠️ '+msg; el.style.display='block';
+}
+
+// ── Charts ────────────────────────────────────────────────
+let charts = {};
+function mkChart(id, cfg) {
+  if (charts[id]) { charts[id].destroy(); }
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+
+// ── Main load ─────────────────────────────────────────────
+async function loadDashboard(force=false) {
+  setLoading(true);
+  document.getElementById('refreshBtn').textContent = '…';
+  document.getElementById('errorBanner').style.display = 'none';
+  try {
+    if (force) await fetch(API_BASE+'/refresh', {method:'POST'});
+    const d = await fetch(API_BASE+'/data').then(r => {
+      if (!r.ok) return r.json().then(e=>{throw new Error(e.error||r.status);});
+      return r.json();
+    });
+    window._lastData = d;   // cached for per-page chart redraws on tab switch
+
+    const ts = new Date(d.fetchedAt);
+    setText('lastUpdated', ts.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}));
+    document.getElementById('refreshBtn').textContent = '↻';
+
+    // Update live constants for simulators
+    const s = d.summary;
+    PAID_PRICE       = s.paidOrderAvg   || 8012;
+    TOTAL_ORDERS     = s.totalOrders;
+    ACTIVE_CUSTOMERS = s.activeCustomers;
+    ORDERS_PER_CLUB  = s.ordersPerClubPerMonth  || 41;   // BUG 1 FIX
+    FORECAST_BASE    = s.forecastBase           || 390000; // BUG 3 FIX
+
+    renderOverview(s, d.monthly);
+    renderCustomers(s, d.signups, d.freqBuckets, d.topByOrders, d.topByRevenue);
+    renderAccounts(d.accounts, d.kickStats, d.promoStats, d.hourDist, d.dowDist, s);
+    renderInsights(s);
+    renderProjections(d.projections);
+    seedBuilder(d.calc);
+    simClubs(); simPromo();
+    setLoading(false);
+  } catch(e) {
+    setLoading(false);
+    document.getElementById('refreshBtn').textContent = '↻';
+    showError(e.message);
+  }
+}
+
+// ── Overview ──────────────────────────────────────────────
+function renderOverview(s, monthly) {
+  setText('ov-desc', 'All-time · '+s.totalOrders+' orders · '+monthly.length+' months');
+  setText('m-totalOrders', s.totalOrders.toLocaleString());
+  setText('m-pending',     s.pendingOrders+' pending');
+  setText('m-growthTrend', '↑ '+s.revenueGrowthPeak+'× revenue growth'); // BUG 2 FIX
+  setText('m-revenue',     fmtUZS(s.totalRevenue));
+  setText('m-customers',   s.totalCustomers.toLocaleString());
+  setText('m-active',      s.activeCustomers+' active · '+s.neverOrdered+' never ordered');
+  setText('m-activation',  Math.round(s.activationRate*100)+'% activation');
+  setText('m-hours',       Math.round(s.totalHours).toLocaleString()+'h');
+  setText('m-avgHours',    (s.totalHours/s.totalOrders).toFixed(2)+'h avg/order');
+  setText('m-peakDay',     'Peak: '+s.peakDow+' at '+s.peakHour+':00');
+  setText('m-avgOrder',    Math.round(s.avgOrderValue).toLocaleString());
+  setText('m-paidAvg',     '~'+Math.round(s.paidOrderAvg).toLocaleString()+' UZS paid avg');
+  setText('m-promoRate',   Math.round(s.promoRate*100)+'%');
+  setText('m-promoCount',  s.promoOrders+' promo · '+s.paidOrders+' paid');
+  // BUG 5 + LOGIC 10 FIX: use actual foregone revenue, not inflated discount column
+  setText('m-discounts',     fmtUZS(s.totalForgoneRevenue));
+  setText('m-discountRatio', (s.totalForgoneRevenue/Math.max(1,s.totalRevenue)).toFixed(1)+'× revenue foregone');
+
+  // Revenue + orders chart
+  const labels  = monthly.map(m=>monthLabel(m.month));
+  const orders  = monthly.map(m=>m.orders);
+  const revenue = monthly.map(m=>m.revenue);
+  mkChart('m-revenueChart', {
+    data: { labels, datasets: [
+      {type:'bar',  data:orders,  backgroundColor:'rgba(88,166,255,0.7)', borderRadius:3, yAxisID:'y'},
+      {type:'line', data:revenue, borderColor:'#3fb950', backgroundColor:'rgba(63,185,80,0.08)', fill:true, tension:0.4, pointRadius:3, pointBackgroundColor:'#3fb950', yAxisID:'y2'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},
+      y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},
+      y2:{position:'right',ticks:{color:TICK,font:{size:10},callback:v=>fmtNum(v)},grid:{display:false}}
+    }}
+  });
+
+  // Promo trend line
+  const promoRates = monthly.map(m=>m.orders?Math.round(m.promo/m.orders*100):0);
+  mkChart('m-promoTrendChart', {
+    type:'line',
+    data:{ labels, datasets:[{data:promoRates, borderColor:'#d29922', backgroundColor:'rgba(210,153,34,0.08)', fill:true, tension:0.4, pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{ticks:{color:TICK,font:{size:10}},grid:{display:false}},
+      y:{min:0,max:100,ticks:{color:TICK,font:{size:10},callback:v=>v+'%'},grid:{color:GRID}}
+    }}
+  });
+}
+
+// ── Customers ─────────────────────────────────────────────
+function renderCustomers(s, signups, freq, topOrders, topRevenue) {
+  // Funnel
+  const setFunnel = (id, count, pct, color) => {
+    const row = document.getElementById(id);
+    if (!row) return;
+    row.querySelector('.funnel-bar').style.width = pct+'%';
+    row.querySelector('.funnel-bar').style.background = color;
+    row.querySelector('.funnel-bar').textContent = count;
+    row.querySelector('.funnel-count').textContent = count;
+  };
+  setFunnel('mf-registered', s.totalCustomers, 100, '#58a6ff');
+  setFunnel('mf-active',     s.activeCustomers, Math.round(s.activationRate*100), '#3fb950');
+  setFunnel('mf-regular',    Math.round(s.activeCustomers*0.37), 37, '#a371f7');
+  setFunnel('mf-never',      s.neverOrdered, Math.round((1-s.activationRate)*100), '#f85149');
+
+  // Frequency chart
+  const fLabels = freq.map(b=>b.label);
+  const fValues = freq.map(b=>b.value);
+  mkChart('m-freqChart', {
+    type:'bar',
+    data:{labels:fLabels, datasets:[{data:fValues, backgroundColor:['#f85149','rgba(88,166,255,0.6)','rgba(88,166,255,0.8)','#58a6ff','#3fb950'], borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TICK,font:{size:9}},grid:{display:false}},y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}}}}
+  });
+
+  // Signups chart
+  const sLabels = signups.map(s=>monthLabel(s.month));
+  const sValues = signups.map(s=>s.count);
+  const maxSig  = Math.max(...sValues);
+  const peakIdx = sValues.indexOf(maxSig);
+  setText('m-signupSubtitle', 'Peak: '+sLabels[peakIdx]+' — '+maxSig+' new users');
+  mkChart('m-signupChart', {
+    type:'bar',
+    data:{labels:sLabels, datasets:[{data:sValues, backgroundColor:sValues.map(v=>v===maxSig?'#a371f7':'rgba(163,113,247,0.45)'), borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TICK,font:{size:10}},grid:{display:false}},y:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}}}}
+  });
+
+  // Tables
+  const rankEl = (i) => `<span class="rank-badge ${['rank-1','rank-2','rank-3','rank-n'][Math.min(i,3)]}">${i+1}</span>`;
+  const maxOrd = topOrders.length ? topOrders[0].orders : 1;
+  document.getElementById('m-topOrdersTable').innerHTML = topOrders.map((r,i)=>`
+    <tr><td>${rankEl(i)}</td><td>${r.name}</td><td><strong>${r.orders}</strong></td><td class="text-muted">${r.revenue>0?fmtNum(r.revenue)+' UZS':'—'}</td></tr>`).join('');
+  document.getElementById('m-topRevenueTable').innerHTML = topRevenue.map((r,i)=>`
+    <tr><td>${rankEl(i)}</td><td>${r.name}</td><td class="text-green"><strong>${fmtNum(r.revenue)} UZS</strong></td><td class="text-muted">${r.orders}</td></tr>`).join('');
+}
+
+// ── Accounts ──────────────────────────────────────────────
+function renderAccounts(accounts, kick, promoStats, hourDist, dowDist, s) {
+  // Account chart (top 10)
+  const top10 = accounts.slice(0,10);
+  mkChart('m-accountChart', {
+    type:'bar',
+    data:{
+      labels:top10.map(a=>a.name),
+      datasets:[{data:top10.map(a=>a.sessions), backgroundColor:top10.map((a,i)=>i===0?'#f85149':i<4?'rgba(88,166,255,0.7)':'rgba(88,166,255,0.4)'), borderRadius:3}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:TICK,font:{size:10}},grid:{color:GRID}},y:{ticks:{color:TICK,font:{size:10}},grid:{display:false}}}}
+  });
+
+  // Kick stats
+  setText('m-kickTotal',   kick.total.toLocaleString());
+  setText('m-kickSuccess', kick.success+'  ('+kick.successRate+'%)');
+  setText('m-kickFail',    kick.fail);
+
+  // Reliability list
+  const relHtml = (s.reliability || []).slice(0,8).map(r=>`
+    <div class="rel-card">
+      <div class="rel-name">${r.name}</div>
+      <div class="rel-bar-wrap">
+        <div class="rel-bar-bg"><div class="rel-bar-fill" style="width:${Math.min(r.failRate,100)}%"></div></div>
+      </div>
+      <div class="rel-pct" style="color:${r.failRate>70?'var(--red)':r.failRate>40?'var(--orange)':'var(--green)'}">${r.failRate}%</div>
+    </div>`).join('');
+  document.getElementById('m-reliabilityList').innerHTML = relHtml || '<div style="color:var(--muted);font-size:12px;padding:8px 0">No reliability data yet</div>';
+
+  // Promo table
+  document.getElementById('m-promoTable').innerHTML = promoStats.map(p=>`
+    <tr>
+      <td><strong>${p.code}</strong></td>
+      <td>${fmtNum(p.value)} UZS</td>
+      <td>${p.used}</td>
+      <td class="text-muted">${p.maxUses}</td>
+    </tr>`).join('');
+
+  // Time distribution chart — store globally so the toggle can redraw
+  window._hourDist = hourDist || Array(24).fill(0);
+  window._dowDist  = dowDist  || Array(7).fill(0);
+  // Reset toggle to Hour on each data load
+  document.getElementById('btn-hour').classList.add('tog-active');
+  document.getElementById('btn-dow').classList.remove('tog-active');
+  renderTimeDistChart('hour');
+}
+
+function renderTimeDistChart(mode) {
+  const DOW_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const hourDist = window._hourDist || Array(24).fill(0);
+  const dowDist  = window._dowDist  || Array(7).fill(0);
+
+  let labels, data, peakIdx;
+  if (mode === 'dow') {
+    labels  = DOW_LABELS;
+    data    = dowDist;
+    peakIdx = data.indexOf(Math.max(...data));
+    setText('m-peakHourLabel', 'Peak: ' + DOW_LABELS[peakIdx] + ' (' + data[peakIdx] + ' orders)');
+  } else {
+    data    = hourDist;
+    labels  = Array.from({length:24}, (_, i) => i + ':00');
+    peakIdx = data.indexOf(Math.max(...data));
+    setText('m-peakHourLabel', 'Peak: ' + peakIdx + ':00 (' + data[peakIdx] + ' orders)');
+  }
+
+  const colors = data.map((v, i) => i === peakIdx ? '#a371f7' : 'rgba(88,166,255,0.45)');
+  mkChart('m-hourChart', {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: {
+            color: TICK, font: { size: mode === 'hour' ? 8 : 10 }, maxRotation: 0,
+            ...(mode === 'hour' ? { callback: (_, i) => i % 4 === 0 ? i + ':00' : '' } : {})
+          },
+          grid: { display: false }
+        },
+        y: { ticks: { color: TICK, font: { size: 9 } }, grid: { color: GRID } }
+      }
+    }
+  });
+}
+
+function switchTimeDist(mode) {
+  document.getElementById('btn-hour').classList.toggle('tog-active', mode === 'hour');
+  document.getElementById('btn-dow').classList.toggle('tog-active', mode === 'dow');
+  renderTimeDistChart(mode);
+}
+
+// ── Insights ──────────────────────────────────────────────
+function renderInsights(s) {
+  setText('i-neverOrdered', s.neverOrdered);
+}
+
+// ── PROJECTIONS (current month) ───────────────────────────
+function pjTrend(pct) {
+  if (pct > 0) return { cls: 'kpi-trend trend-up',   txt: '▲ ' + pct + '%' };
+  if (pct < 0) return { cls: 'kpi-trend trend-down', txt: '▼ ' + Math.abs(pct) + '%' };
+  return            { cls: 'kpi-trend trend-neutral', txt: 'flat' };
+}
+function renderProjections(p) {
+  if (!p) return;
+  window._proj = p;
+  setText('pj-month',   monthLabel(p.monthKey) + ' ' + p.monthKey.split('-')[0]);
+  setText('pj-dayinfo', 'Day ' + p.dayOfMonth + '/' + p.daysInMonth);
+  setText('pj-conf',    p.confidence + '% in');
+  document.getElementById('pj-progress').style.width = Math.round(p.elapsedFrac * 100) + '%';
+  setText('pj-desc', 'Projected finish for ' + monthLabel(p.monthKey) + ' · ' + p.daysRemaining + ' days left');
+  const fill = (k, money) => {
+    const m = p[k]; if (!m) return;
+    const f = money ? fmtUZS : (v => fmtNum(v));
+    setText('pj-' + k,          f(m.projected));
+    setText('pj-' + k + '-mtd', f(m.mtd) + ' so far');
+    const t = pjTrend(m.vsLastFullPct);
+    const el = document.getElementById('pj-' + k + '-trend');
+    if (el) { el.className = t.cls; el.textContent = t.txt + ' vs last mo'; }
+  };
+  fill('orders', false); fill('revenue', true); fill('signups', false); fill('hours', false);
+  window._paceMode = 'revenue';
+  drawPaceChart('revenue');
+}
+function switchPace(mode) {
+  window._paceMode = mode;
+  document.getElementById('pj-pace-revenue').classList.toggle('tog-active', mode === 'revenue');
+  document.getElementById('pj-pace-orders').classList.toggle('tog-active', mode === 'orders');
+  drawPaceChart(mode);
+}
+function drawPaceChart(mode) {
+  const p = window._proj; if (!p) return;
+  const isRev    = mode === 'revenue';
+  const cum      = isRev ? p.daily.cumRevenue : p.daily.cumOrders;
+  const aDays    = p.daily.actualDays;
+  const total    = isRev ? p.revenue.projected : p.orders.projected;
+  const lastFull = isRev ? p.revenue.lastFull  : p.orders.lastFull;
+  const n        = p.daysInMonth;
+  const labels   = Array.from({ length: n }, (_, i) => i + 1);
+  const lastActual = cum[aDays - 1] || 0;
+  const remain   = Math.max(1, n - aDays);
+  const actual   = cum.map((v, i) => (i < aDays ? v : null));
+  const proj     = labels.map((_, i) => {
+    const day = i + 1;
+    if (day < aDays)  return null;
+    if (day === aDays) return lastActual;
+    return Math.round(lastActual + (total - lastActual) * ((day - aDays) / remain));
+  });
+  const ref = labels.map(() => lastFull);
+  mkChart('pj-chart', {
+    type: 'line',
+    data: { labels, datasets: [
+      { data: actual, borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,0.1)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { data: proj,   borderColor: '#a371f7', backgroundColor: 'transparent', tension: 0.3, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] },
+      { data: ref,    borderColor: '#8b949e', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, borderDash: [2, 3] }
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: TICK, font: { size: 8 }, maxRotation: 0, callback: (_, i) => (i + 1) % 5 === 0 ? i + 1 : '' }, grid: { display: false } },
+                y: { ticks: { color: TICK, font: { size: 9 }, callback: v => fmtNum(v) }, grid: { color: GRID } } } }
+  });
+}
+
+// ── FORECAST BUILDER (interactive what-if) ────────────────
+const bVal = id => parseFloat(document.getElementById(id).value) || 0;
+function seedBuilder(c) {
+  if (c) {
+    window._calc = c;
+    if (!window._builderSeeded) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el != null) el.value = v; };
+      set('b-accounts', c.accounts); set('b-clubs', c.clubs); set('b-price', c.pricePerHour);
+      set('b-session', c.avgSessionHours); set('b-util', c.sessionsPerAccountPerDay);
+      set('b-demand', c.ordersPerClubPerMonth); set('b-days', c.operatingDays);
+      window._builderSeeded = true;
+    }
+  }
+  runBuilder();
+}
+function resetBuilder() { window._builderSeeded = false; seedBuilder(window._calc); }
+function runBuilder() {
+  const accounts = bVal('b-accounts'), clubs = bVal('b-clubs'), price = bVal('b-price'),
+        session = bVal('b-session'), util = bVal('b-util'), demandPer = bVal('b-demand'), days = bVal('b-days'),
+        costAcct = bVal('b-costAcct'), costClub = bVal('b-costClub'), costFixed = bVal('b-costFixed'),
+        growth = bVal('b-growth') / 100;
+  setText('b-accountsVal', accounts); setText('b-clubsVal', clubs);
+  setText('b-priceVal', Math.round(price).toLocaleString());
+  setText('b-sessionVal', session.toFixed(1)); setText('b-utilVal', util.toFixed(2));
+  setText('b-demandVal', Math.round(demandPer)); setText('b-daysVal', days);
+
+  const capacity = Math.round(accounts * util * days);
+  const demand   = Math.round(clubs * demandPer);
+  const orders   = Math.min(capacity, demand);
+  const utilization = capacity > 0 ? Math.round(orders / capacity * 100) : 0;
+  const hours    = Math.round(orders * session);
+  const revenue  = Math.round(orders * session * price);
+  const costs    = Math.round(accounts * costAcct + clubs * costClub + costFixed);
+  const profit   = revenue - costs;
+
+  setText('b-revenue', fmtUZS(revenue));
+  const profEl = document.getElementById('b-profit');
+  profEl.textContent = fmtUZS(profit);
+  profEl.className = 'big-out-val ' + (profit >= 0 ? 'text-green' : 'text-red');
+  setText('b-capacity', capacity.toLocaleString() + '/mo');
+  setText('b-demandOut', demand.toLocaleString() + '/mo');
+  setText('b-orders', orders.toLocaleString());
+  const uEl = document.getElementById('b-utilization');
+  uEl.textContent = utilization + '%';
+  uEl.className = 'stat-val ' + (utilization > 95 ? 'text-red' : utilization > 75 ? 'text-orange' : 'text-green');
+  setText('b-hoursOut', hours.toLocaleString() + ' h');
+  setText('b-costs', costs > 0 ? fmtUZS(costs) : '—');
+  setText('b-annualRev', fmtUZS(revenue * 12));
+  const apEl = document.getElementById('b-annualProfit');
+  apEl.textContent = fmtUZS(profit * 12);
+  apEl.className = 'stat-val ' + (profit >= 0 ? 'text-green' : 'text-red');
+
+  const bEl = document.getElementById('b-bottleneck');
+  if (capacity < demand) {
+    const short = demand - capacity;
+    const need = Math.max(1, Math.ceil(demand / Math.max(0.01, util * days)) - accounts);
+    bEl.innerHTML = '<div class="sim-alert sim-alert-warn">🔴 <strong>Supply-constrained</strong> — demand exceeds capacity by ' + short.toLocaleString() + '/mo. Add ~' + need + ' accounts.</div>';
+  } else if (demand < capacity * 0.7) {
+    const idle = capacity - demand;
+    const moreClubs = Math.max(1, Math.ceil(capacity / Math.max(1, demandPer)) - clubs);
+    bEl.innerHTML = '<div class="sim-alert sim-alert-info">🟡 <strong>Demand-constrained</strong> — ' + idle.toLocaleString() + ' idle sessions/mo. Add ~' + moreClubs + ' clubs.</div>';
+  } else {
+    bEl.innerHTML = '<div class="sim-alert sim-alert-ok">🟢 <strong>Well balanced</strong> at ' + utilization + '% utilization.</div>';
+  }
+  drawBuilderChart(revenue, profit, growth);
+}
+function drawBuilderChart(rev0, profit0, growth) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let m;
+  if (window._proj) { m = parseInt(window._proj.monthKey.split('-')[1], 10); }
+  else { m = new Date().getMonth() + 1; }
+  const labels = [], rev = [], prof = [];
+  let r = rev0, pr = profit0, year1 = 0;
+  for (let i = 0; i < 12; i++) {
+    labels.push(MONTHS[(m - 1 + i) % 12]);
+    rev.push(Math.round(r)); prof.push(Math.round(pr)); year1 += r;
+    r *= (1 + growth); pr *= (1 + growth);
+  }
+  setText('b-year1', fmtUZS(Math.round(year1)));
+  mkChart('b-chart', {
+    type: 'bar',
+    data: { labels, datasets: [
+      { type: 'bar',  data: rev,  backgroundColor: 'rgba(63,185,80,0.55)', borderRadius: 3, order: 2 },
+      { type: 'line', data: prof, borderColor: '#a371f7', backgroundColor: 'rgba(163,113,247,0.1)', tension: 0.3, pointRadius: 0, borderWidth: 2, fill: true, order: 1 }
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: TICK, font: { size: 8 } }, grid: { display: false } },
+                y: { ticks: { color: TICK, font: { size: 9 }, callback: v => fmtNum(v) }, grid: { color: GRID } } } }
+  });
+}
+
+// ── SIMULATORS ────────────────────────────────────────────
+function simClubs() {
+  const clubs    = parseInt(document.getElementById('s-clubs').value);
+  const promoRate= parseInt(document.getElementById('s-clubPromo').value)/100;
+  setText('s-clubsVal',    clubs);
+  setText('s-clubPromoVal',Math.round(promoRate*100));
+
+  const monthlyOrders = clubs * ORDERS_PER_CLUB;
+  const paidOrd  = monthlyOrders*(1-promoRate);
+  const promoOrd = monthlyOrders*promoRate;
+  const rev      = paidOrd*PAID_PRICE + promoOrd*PROMO_PRICE;
+  const accts    = Math.ceil(monthlyOrders/SESSIONS_PER_ACCOUNT);
+
+  setText('s-clubOrders', Math.round(monthlyOrders)+'/month');
+  setText('s-clubRev',    fmtUZS(Math.round(rev)));
+  setText('s-clubAccts',  accts+' accounts');
+  setText('s-clubAnnual', fmtUZS(Math.round(rev*12)));
+
+  const al = document.getElementById('s-clubAlert');
+  if (clubs<=2)       { al.className='sim-alert sim-alert-info'; al.textContent='📊 Original 2-club baseline.'; }
+  else if (clubs===6) { al.className='sim-alert sim-alert-info'; al.textContent='📊 Your current 6-club state.'; }
+  else if (clubs>10)  { al.className='sim-alert sim-alert-warn'; al.textContent='⚠️ Need '+accts+' accounts at '+clubs+' clubs.'; }
+  else                { al.className='sim-alert sim-alert-ok';   al.textContent='✅ '+Math.round(monthlyOrders)+' orders/month — manageable.'; }
+}
+
+function simPromo() {
+  const pr      = parseInt(document.getElementById('s-promo').value)/100;
+  const ordMo   = parseInt(document.getElementById('s-promoOrders').value);
+  setText('s-promoVal',       Math.round(pr*100));
+  setText('s-promoOrdersVal', ordMo);
+
+  const paid  = Math.round(ordMo*(1-pr));
+  const promo = Math.round(ordMo*pr);
+  const rev   = paid*PAID_PRICE + promo*PROMO_PRICE;
+  const base  = Math.round(28*PAID_PRICE + 58*PROMO_PRICE);
+  const pct   = Math.round((rev-base)/base*100);
+
+  setText('s-promoPaid',  paid);
+  setText('s-promoPromo', promo);
+  setText('s-promoRev',   fmtUZS(Math.round(rev)));
+
+  const vsEl = document.getElementById('s-promoVs');
+  vsEl.textContent = (pct>=0?'+':'')+pct+'%';
+  vsEl.className = 'stat-val '+(pct>=0?'text-green':'text-red');
+
+  const al = document.getElementById('s-promoAlert');
+  if (pr<0.3)      { al.className='sim-alert sim-alert-ok';   al.textContent='✅ Low promo — strong revenue signal.'; }
+  else if (pr<0.5) { al.className='sim-alert sim-alert-ok';   al.textContent='✅ Healthy balance. Target: 30–50%.'; }
+  else if (pr>0.7) { al.className='sim-alert sim-alert-warn'; al.textContent='⚠️ High dependency. Reduce gradually.'; }
+  else             { al.className='sim-alert sim-alert-info'; al.textContent='📊 Good progress toward &lt;50%.'; }
+}
+
+function simBreakeven() {
+  const fixed = parseFloat(document.getElementById('s-fixed').value)||0;
+  const varC  = parseFloat(document.getElementById('s-var').value)||0;
+  const margin = PAID_PRICE - varC;
+
+  if (margin<=0) { setText('s-beSessions','∞ variable cost too high'); return; }
+  if (!fixed)    { setText('s-beSessions','Enter costs above'); setText('s-beStatus','—'); setText('s-beProfit','—'); return; }
+
+  const be     = Math.ceil(fixed/margin);
+  const curr   = Math.round(TOTAL_ORDERS/7);
+  const proj6  = ORDERS_PER_CLUB*6;
+
+  setText('s-beSessions', be+' sessions/month');
+  const stEl = document.getElementById('s-beStatus');
+  const prEl = document.getElementById('s-beProfit');
+  if (curr>=be) {
+    stEl.textContent='✅ Profitable now'; stEl.className='stat-val text-green';
+    prEl.textContent=fmtUZS(Math.round(curr*margin-fixed))+'/mo'; prEl.className='stat-val text-green';
+  } else if (proj6>=be) {
+    stEl.textContent='⚠️ Profitable at 6-club scale'; stEl.className='stat-val text-orange';
+    prEl.textContent=fmtUZS(Math.round(proj6*margin-fixed))+'/mo (6 clubs)'; prEl.className='stat-val text-green';
+  } else {
+    stEl.textContent='🔴 Need more scale'; stEl.className='stat-val text-red';
+    prEl.textContent=fmtUZS(Math.round(curr*margin-fixed))+'/mo (negative)'; prEl.className='stat-val text-red';
+  }
+}
+
+// ── Auto refresh every 60s ─────────────────────────────────
+setInterval(()=>loadDashboard(false), 60000);
+loadDashboard();
+</script>
+</body>
+</html>
